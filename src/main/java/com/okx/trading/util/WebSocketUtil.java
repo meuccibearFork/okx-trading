@@ -526,7 +526,6 @@ public class WebSocketUtil {
      */
     @Async("klineHandleScheduler")
     protected void handleMessage(WebSocketReconnectEvent.ReconnectType reconnectType, String message) {
-        log.info("<message.{}>: {}", reconnectType, message);
         try {
             // 处理简单的ping-pong响应
             if ("ping".equals(message)) {
@@ -649,6 +648,8 @@ public class WebSocketUtil {
                 }
                 return;
             }
+
+            log.info("<message.{}>: {}", reconnectType, message);
 
             // 根据消息类型路由到相应的处理器
             String topic = null;

@@ -113,6 +113,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
         if (runningStrategies.isEmpty()) {
             return;
         }
+        log.info("handleNewKlineData symbol:{} interval:{} candlestick:{}", symbol, interval, candlestick);
         runningStrategies.entrySet().stream()
                 .filter(entry -> {
                     RealTimeStrategyEntity state = entry.getValue();

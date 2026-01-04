@@ -1,6 +1,9 @@
 package com.okx.trading;
 
 import com.alibaba.fastjson2.JSON;
+import com.okx.trading.infrastructure.okx.OkxWsApiService;
+import com.okx.trading.infrastructure.okx.WsMessageListener;
+import com.okx.trading.infrastructure.okx.entity.ws.request.biz.GridPositionsArg;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -110,39 +113,35 @@ public class OkxWsServiceTest {
             }
         });
 
-        wsApiService.subscribeAccount(AccountArg.builder()
-                .ccy("BTC")
-                .build());
-        TimeUnit.SECONDS.sleep(5L);
-        wsApiService.subscribeOpenInterest(OpenInterestArg.builder()
-                .instId("LTC-USD-SWAP")
-                .build());
-        TimeUnit.SECONDS.sleep(5L);
-        wsApiService.subscribeOpenInterest(OpenInterestArg.builder()
-                .instId("BTC-USD-SWAP")
-                .build());
-        TimeUnit.SECONDS.sleep(10L);
-        wsApiService.unsubscribeOpenInterest(OpenInterestArg.builder()
-                .instId("BTC-USD-SWAP")
-                .build());
-
-        wsApiService.subscribeOpenInterest(OpenInterestArg.builder()
-                .instId("LTC-USD-SWAP")
-                .build());
+//        wsApiService.subscribeAccount(AccountArg.builder()
+//                .ccy("BTC")
+//                .build());
+//        TimeUnit.SECONDS.sleep(5L);
+//        wsApiService.subscribeOpenInterest(OpenInterestArg.builder()
+//                .instId("LTC-USD-SWAP")
+//                .build());
+//        TimeUnit.SECONDS.sleep(5L);
+//        wsApiService.subscribeOpenInterest(OpenInterestArg.builder()
+//                .instId("BTC-USD-SWAP")
+//                .build());
+//        TimeUnit.SECONDS.sleep(10L);
+//        wsApiService.unsubscribeOpenInterest(OpenInterestArg.builder()
+//                .instId("BTC-USD-SWAP")
+//                .build());
+//
+//        wsApiService.subscribeOpenInterest(OpenInterestArg.builder()
+//                .instId("LTC-USD-SWAP")
+//                .build());
         TimeUnit.SECONDS.sleep(10L);
         wsApiService.unsubscribeOpenInterest(OpenInterestArg.builder()
                 .instId("LTC-USD-SWAP")
                 .build());
         TimeUnit.SECONDS.sleep(5);
         // 模拟盘
-        String apiKey = System.getenv("API_KEY");
-        String passphrase = System.getenv("PASSPHRASE");
-        String secretKey = System.getenv("SECRET_KEY");
+        String apiKey = System.getenv("OKX_API_KEY");
+        String passphrase = System.getenv("OKX_PASSPHRASE");
+        String secretKey = System.getenv("OKX_SECRET_KEY");
 
-
-//        apiKey = "b81e589c-864a-4401-bedf-819608d0c51f";
-//        passphrase = "9WVku96XdasrC9u.";
-//        secretKey = "F4B5AD175F7AE9457048ED8E39BDB91D";
         wsApiService.login(LoginArg.builder()
                 .apiKey(apiKey)
                 .passphrase(passphrase)
@@ -150,25 +149,34 @@ public class OkxWsServiceTest {
                 .build(), secretKey);
 
         TimeUnit.SECONDS.sleep(5);
-
-        wsApiService.subscribeAccount(AccountArg.builder()
-                .ccy("BTC")
-                .build());
-
+//
+//        wsApiService.subscribeAccount(AccountArg.builder()
+//                .ccy("BTC")
+//                .build());
+//
         wsApiService.subscribePositions(PositionsArg.builder()
                 .instType(InstrumentType.ANY)
                 .build());
 
-        wsApiService.subscribeBalanceAndPosition(BalanceAndPositionArg.builder().build());
-        wsApiService.subscribeLiquidationWarning(LiquidationWarningArg.builder()
-                        .instType(InstrumentType.ANY)
+        wsApiService.subscribeGridPositions(GridPositionsArg.builder()
                 .build());
+//
+//        wsApiService.subscribeBalanceAndPosition(BalanceAndPositionArg.builder().build());
+//        wsApiService.subscribeLiquidationWarning(LiquidationWarningArg.builder()
+//                        .instType(InstrumentType.ANY)
+//                .build());
 //        wsApiService.subscribeAccountGreeks(AccountGreeksArg.builder().build());
 //        wsApiService.subscribeDepositInfo(DepositInfoArg.builder()
 //                .ccy("BTC")
 //                .build());
 
 //        wsApiService.subscribeIndexCandle(IndexCandleArg.builder()
+//                .channel(Channel.INDEX_CANDLE_1M)
+//                .instId("BTC-USD")
+//                .build());
+
+
+//        wsApiService.subscribeIndexCandle(GridPositionsArg.builder()
 //                .channel(Channel.INDEX_CANDLE_1M)
 //                .instId("BTC-USD")
 //                .build());

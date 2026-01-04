@@ -1,5 +1,6 @@
 package com.okx.trading.strategy;
 
+import com.alibaba.fastjson2.JSON;
 import com.okx.trading.model.TimeSlice;
 import com.okx.trading.util.Ta4jNumUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ import static com.okx.trading.strategy.StrategyRegisterCenter.addExtraStopRule;
  */
 @Slf4j
 public class CustomizeStrategyFactory {
+
 
     /**
      * // This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
@@ -165,9 +167,6 @@ public class CustomizeStrategyFactory {
 //                exitShortRule);
 //    }
 
-
-
-
 //    public static Strategy createAdvancedMultiLevelStrategy(BarSeries series) {
 //        // 获取更高时间框架的数据
 //        OpenPriceIndicator openPrice = new OpenPriceIndicator(series);
@@ -276,6 +275,7 @@ public class CustomizeStrategyFactory {
 //        }
 //
 //        MultiLevelTPSLIndicator multiLevelTPSL = new MultiLevelTPSLIndicator(closePrice, atr, series);
+//        System.out.println(multiLevelTPSL.entryPrice);
 //
 //        // 动态止盈止损规则
 //        class DynamicTakeProfitRule implements Rule {
@@ -378,6 +378,185 @@ public class CustomizeStrategyFactory {
 
 
 
+
+    /**
+     * 创建多层次止盈止损策略
+     * 使用不同层次的止盈止损点来管理风险和锁定利润
+     * <p>
+     * 策略逻辑：
+     * 1. 当RSI<30且价格突破20日均线时买入
+     * 2. 设置多个止盈点：2%、4%、6%
+     * 3. 设置多个止损点：-1%、-2%、-3%
+     * 4. 根据价格变化动态调整止盈止损位
+     */
+    public static Strategy createMultiLevelTakeProfitStopLossStrategy(BarSeries series) {
+        int rsiPeriod = 14;
+        int smaPeriod = 20;
+
+        if (series.getBarCount() <= Math.max(rsiPeriod, smaPeriod)) {
+            throw new IllegalArgumentException("数据点不足以计算指标: 至少需要 " + (Math.max(rsiPeriod, smaPeriod) + 1) + " 个数据点");
+        }
+
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        RSIIndicator rsi = new RSIIndicator(closePrice, rsiPeriod);
+        SMAIndicator sma20 = new SMAIndicator(closePrice, smaPeriod);
+        ATRIndicator atr = new ATRIndicator(series, 14);
+
+        // 多层次止盈止损指标
+        class MultiLevelTPSLIndicator extends CachedIndicator<Num> {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            private final ClosePriceIndicator closePrice;
+            private final ATRIndicator atr;
+            private final double[] takeProfitLevels = {0.02, 0.04, 0.06}; // 2%, 4%, 6%
+            private final double[] stopLossLevels = {-0.01, -0.02, -0.03}; // -1%, -2%, -3%
+            private Num entryPrice = null;
+            private boolean isLong = false;
+            private int currentTPLevel = 0;
+            private int currentSLLevel = 0;
+
+            public MultiLevelTPSLIndicator(ClosePriceIndicator closePrice, ATRIndicator atr, BarSeries series) {
+                super(series);
+                this.closePrice = closePrice;
+                this.atr = atr;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                if (index == 0) {
+                    return Ta4jNumUtil.valueOf(0);
+                }
+
+                Num currentPrice = closePrice.getValue(index);
+
+                // 如果还没有入场价格，返回0
+                if (entryPrice == null) {
+                    return Ta4jNumUtil.valueOf(0);
+                }
+
+                // 计算当前收益率
+                Num profitRate = currentPrice.minus(entryPrice).dividedBy(entryPrice);
+
+                // 检查止盈条件
+                for (int i = currentTPLevel; i < takeProfitLevels.length; i++) {
+                    if (profitRate.doubleValue() >= takeProfitLevels[i]) {
+                        currentTPLevel = i + 1;
+                        // 动态调整止损位 - 当达到某个止盈点时，将止损位上移
+                        if (i > 0) {
+                            currentSLLevel = Math.min(currentSLLevel + 1, stopLossLevels.length - 1);
+                        }
+                        return Ta4jNumUtil.valueOf(1); // 部分止盈信号
+                    }
+                }
+
+                // 检查止损条件
+                if (profitRate.doubleValue() <= stopLossLevels[currentSLLevel]) {
+                    return Ta4jNumUtil.valueOf(-1); // 止损信号
+                }
+
+                return Ta4jNumUtil.valueOf(0); // 持仓信号
+            }
+
+            public void setEntryPrice(Num price) {
+                this.entryPrice = price;
+                this.isLong = true;
+                this.currentTPLevel = 0;
+                this.currentSLLevel = 0;
+            }
+
+            public void reset() {
+                this.entryPrice = null;
+                this.isLong = false;
+                this.currentTPLevel = 0;
+                this.currentSLLevel = 0;
+            }
+        }
+
+        MultiLevelTPSLIndicator multiLevelTPSL = new MultiLevelTPSLIndicator(closePrice, atr, series);
+
+        // 动态止盈止损规则
+        class DynamicTakeProfitRule implements Rule {
+            private final MultiLevelTPSLIndicator indicator;
+
+            public DynamicTakeProfitRule(MultiLevelTPSLIndicator indicator) {
+                this.indicator = indicator;
+            }
+
+            @Override
+            public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+                if (tradingRecord.getCurrentPosition().isOpened()) {
+                    // 设置入场价格
+                    if (indicator.entryPrice == null) {
+                        Trade entryTrade = tradingRecord.getCurrentPosition().getEntry();
+                        indicator.setEntryPrice(entryTrade.getNetPrice());
+                        log.info("<entryTrade>:{}", JSON.toJSONString(entryTrade));
+                    }
+
+                    Num signal = indicator.getValue(index);
+                    return signal.doubleValue() == 1 || signal.doubleValue() == -1;
+                }
+                return false;
+            }
+        }
+
+        class DynamicStopLossRule implements Rule {
+            private final MultiLevelTPSLIndicator indicator;
+
+            public DynamicStopLossRule(MultiLevelTPSLIndicator indicator) {
+                this.indicator = indicator;
+            }
+
+            @Override
+            public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+                if (tradingRecord.getCurrentPosition().isOpened()) {
+                    Num signal = indicator.getValue(index);
+                    return signal.doubleValue() == -1;
+                }
+                return false;
+            }
+        }
+
+        // 入场规则：RSI超卖且价格突破20日均线
+        Rule entryRule = new UnderIndicatorRule(rsi, Ta4jNumUtil.valueOf(30))
+                .and(new CrossedUpIndicatorRule(closePrice, sma20));
+
+        // 出场规则：多层次止盈止损或RSI超买
+        Rule exitRule = new OrRule(
+                new OrRule(
+                        new DynamicTakeProfitRule(multiLevelTPSL),
+                        new DynamicStopLossRule(multiLevelTPSL)
+                ),
+                new OverIndicatorRule(rsi, Ta4jNumUtil.valueOf(70))
+        );
+
+        // 在出场时重置指标
+        class ResetOnExitRule implements Rule {
+            private final Rule originalRule;
+            private final MultiLevelTPSLIndicator indicator;
+
+            public ResetOnExitRule(Rule originalRule, MultiLevelTPSLIndicator indicator) {
+                this.originalRule = originalRule;
+                this.indicator = indicator;
+            }
+
+            @Override
+            public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+                boolean shouldExit = originalRule.isSatisfied(index, tradingRecord);
+                if (shouldExit) {
+                    indicator.reset();
+                }
+                return shouldExit;
+            }
+        }
+
+        Rule finalExitRule = new ResetOnExitRule(exitRule, multiLevelTPSL);
+
+        return new BaseStrategy("多层次止盈止损策略", entryRule, finalExitRule);
+    }
+
 }
 
 // 力量平衡指标
@@ -418,6 +597,8 @@ class AvgIndicator extends CachedIndicator<Num> {
         // BOP = (Open + Close + High + Low) /4.0
         return range.dividedBy(Ta4jNumUtil.valueOf(4));
     }
+
+
 
 
 }

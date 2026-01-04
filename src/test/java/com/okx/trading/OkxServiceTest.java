@@ -21,6 +21,7 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.time.Duration;
 
+import static com.okx.trading.infrastructure.okx.OkxApiService.buildApi;
 import static com.okx.trading.infrastructure.okx.OkxApiService.defaultClient;
 
 @Slf4j
@@ -32,9 +33,7 @@ public class OkxServiceTest {
         String passphrase = System.getenv("OKX_PASSPHRASE");
         String secretKey = System.getenv("OKX_SECRET_KEY");
 
-        System.out.println(apiKey);
-        System.out.println(passphrase);
-        System.out.println(secretKey);
+        log.info("apiKey:{} passphrase:{} secretKey:{}", apiKey, passphrase, secretKey);
 
         Duration defaultTimeout = Duration.ofSeconds(30);
         boolean simulated = true;
@@ -43,8 +42,8 @@ public class OkxServiceTest {
                 .newBuilder()
 //                .proxy(proxy)
                 .build();
-//        return new OkxApiService(buildApi(apiKey, secretKey, passphrase, simulated, defaultTimeout), client, simulated);
-        return new OkxApiService(apiKey, secretKey, passphrase);
+        return new OkxApiService(buildApi(apiKey, secretKey, passphrase, simulated, defaultTimeout), client, simulated);
+//        return new OkxApiService(apiKey, secretKey, passphrase);
     }
 
     @Test
@@ -54,6 +53,9 @@ public class OkxServiceTest {
         log.info("testGET: {}", JSON.toJSONString(accountBalanceOkxRestResponse));
     }
 
+    /**
+     * 下单
+     */
     @Test
     public void placeOrder() {
         OkxApiService service = getOkxService();
@@ -70,24 +72,30 @@ public class OkxServiceTest {
 //                .ordId("hell")
 //                .build());
 
-
-        log.info("test: {}", response);
+        log.info("test: {}", JSON.toJSONString(response));
     }
 
+    /**
+     *  网格策略智能回测
+     */
     @Test
     public void getAiParam() {
         OkxApiService service = getOkxService();
         var response = service.getGridAiParameterPublic(
                 AlgoOrderType.GRID,
                 "BTC-USDT", null, "7D");
-        log.info("test: {}", response);
+        log.info("response: {}", JSON.toJSONString(response));
     }
 
+    /**
+     * 枚举测试
+     */
     @Test
     public void testIssue2() throws JsonProcessingException {
         ObjectMapper objectMapper = defaultObjectMapper();
         Order order = objectMapper.readValue("{\"tpTriggerPxType\": \"a\"}", Order.class);
-        System.out.println(order);
+        System.out.println(order.getTpTriggerPxType());
+        log.info("order: {}", JSON.toJSONString(order));
     }
 
     public static ObjectMapper defaultObjectMapper() {

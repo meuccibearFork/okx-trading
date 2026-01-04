@@ -190,6 +190,7 @@ public class StrategyRegisterCenter {
         strategyCreators.put(STRATEGY_HT_SINE, StrategyFactory1::createHtSineStrategy);
         strategyCreators.put(STRATEGY_HT_TRENDMODE, StrategyFactory1::createHtTrendmodeStrategy);
         strategyCreators.put(STRATEGY_MSW, StrategyFactory1::createMswStrategy);
+        strategyCreators.put(STRATEGY_CUSTOMIZE, CustomizeStrategyFactory::createMultiLevelTakeProfitStopLossStrategy);
 
         // 集成AdvancedStrategyFactory的50个新策略
         // 注册所有高级策略创建函数

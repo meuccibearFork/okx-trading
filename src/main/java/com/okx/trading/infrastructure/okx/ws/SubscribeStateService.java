@@ -1,5 +1,6 @@
 package com.okx.trading.infrastructure.okx.ws;
 
+import com.alibaba.fastjson.JSON;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -96,7 +97,7 @@ public class SubscribeStateService {
         if (subscribeStates != null) {
             for (SubscribeState subscribeState : subscribeStates) {
                 if (subscribeState.getArg().equals(arg)) {
-                    log.info("Confirm subscribed to channel {} {} {}", wsChannel, arg, subscribeState.getArg());
+                    log.info("Confirm subscribed to channel wsChannel:{} arg:{} arg:{} class:{}", wsChannel, arg, JSON.toJSONString(subscribeState.getArg()), subscribeState.getArg().getClass());
                     subscribeState.setSubscribed(true);
                 }
             }

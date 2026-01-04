@@ -127,20 +127,20 @@ create index backtest_trade_profit_percentage_index on backtest_trade (profit_pe
 
 create index backtest_trade_strategy_code_index on backtest_trade (strategy_code);
 
-# create table candlestick_history
-# (id           bigint auto_increment primary key,
-#  close        decimal(30, 15) null,
-#  close_time   datetime        null,
-#  fetch_time   datetime        null,
-#  high         decimal(30, 15) null,
-#  interval_val varchar(10)     not null,
-#  low          decimal(30, 15) null,
-#  open         decimal(30, 15) null,
-#  open_time    datetime        not null,
-#  quote_volume decimal(30, 15) null,
-#  symbol       varchar(20)     not null,
-#  trades       bigint          null,
-#  volume       decimal(30, 15) null);
+create table candlestick_history
+(id           bigint auto_increment primary key,
+ close        decimal(30, 15) null,
+ close_time   datetime        null,
+ fetch_time   datetime        null,
+ high         decimal(30, 15) null,
+ interval_val varchar(10)     not null,
+ low          decimal(30, 15) null,
+ open         decimal(30, 15) null,
+ open_time    datetime        not null,
+ quote_volume decimal(30, 15) null,
+ symbol       varchar(20)     not null,
+ trades       bigint          null,
+ volume       decimal(30, 15) null);
 
 create table fund_data
 (id               bigint auto_increment primary key,
@@ -214,36 +214,36 @@ create index real_time_orders_strategy_id_create_time_index on real_time_orders 
 
 create index real_time_strategy__index on real_time_orders (strategy_id);
 
-# create table real_time_strategy
-# (id                  bigint auto_increment primary key,
-#  strategy_code       varchar(50)  not null,
-#  strategy_name       varchar(50)  null,
-#  symbol              varchar(20)  not null,
-#  interval_val        varchar(10)  not null,
-#  trade_amount        double       null,
-#  last_trade_amount   double       null,
-#  last_trade_price    double       null,
-#  last_trade_quantity double       null,
-#  last_trade_type     varchar(10)  null,
-#  last_trade_fee      double       null,
-#  last_trade_time     datetime(6)  null,
-#  last_trade_profit   double       null,
-#  total_profit        double       null,
-#  total_profit_rate   double       null,
-#  total_fees          double       null,
-#  total_trades        int          null,
-#  successful_trades   int          null,
-#  is_active           tinyint(1)   null,
-#  status              varchar(20)  null,
-#  message             varchar(255) null,
-#  start_time          datetime(6)  not null,
-#  end_time            datetime(6)  null,
-#  create_time         datetime(6)  not null,
-#  update_time         datetime(6)  not null);
-#
-# create index idx_real_time_strategy_symbol_trade_type on real_time_strategy (symbol, last_trade_type);
-#
-# create index idx_real_time_strategy_trade_type on real_time_strategy (last_trade_type);
+create table real_time_strategy
+(id                  bigint auto_increment primary key,
+ strategy_code       varchar(50)  not null,
+ strategy_name       varchar(50)  null,
+ symbol              varchar(20)  not null,
+ interval_val        varchar(10)  not null,
+ trade_amount        double       null,
+ last_trade_amount   double       null,
+ last_trade_price    double       null,
+ last_trade_quantity double       null,
+ last_trade_type     varchar(10)  null,
+ last_trade_fee      double       null,
+ last_trade_time     datetime(6)  null,
+ last_trade_profit   double       null,
+ total_profit        double       null,
+ total_profit_rate   double       null,
+ total_fees          double       null,
+ total_trades        int          null,
+ successful_trades   int          null,
+ is_active           tinyint(1)   null,
+ status              varchar(20)  null,
+ message             varchar(255) null,
+ start_time          datetime(6)  not null,
+ end_time            datetime(6)  null,
+ create_time         datetime(6)  not null,
+ update_time         datetime(6)  not null);
+
+create index idx_real_time_strategy_symbol_trade_type on real_time_strategy (symbol, last_trade_type);
+
+create index idx_real_time_strategy_trade_type on real_time_strategy (last_trade_type);
 
 create table strategy_conversation
 (id                bigint auto_increment primary key,

@@ -206,6 +206,7 @@ public class IndicatorInfo {
     public static final String STRATEGY_HT_SINE = "HT_SINE"; // 希尔伯特变换-正弦波
     public static final String STRATEGY_HT_TRENDMODE = "HT_TRENDMODE"; // 希尔伯特变换-趋势与周期模式
     public static final String STRATEGY_MSW = "MSW"; // MESA正弦波
+    public static final String STRATEGY_CUSTOMIZE = "CUSTOMIZE"; // 自定义
 
     // 策略参数说明
     // 移动平均线策略参数

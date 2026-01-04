@@ -12,6 +12,11 @@ import com.okx.trading.infrastructure.okx.enumeration.ws.WsChannel;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+/**
+ * 订阅推送处理器
+ * @param <T>
+ * @param <D>
+ */
 @Slf4j
 public class WsSubscribePushHandler<T extends WsResponseArg, D extends WsSubscribeEntity> implements WsHandler {
 
