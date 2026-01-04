@@ -11,6 +11,7 @@ OKX Trading是一款基于Java Spring Boot开发的智能加密货币交易策�
 ### 📈 实盘自动交易系统
 ![img.png](imgs/img.png)
 ![img_7.png](imgs/img_7.png)
+
 - **实时策略执行引擎**：支持策略在实盘环境中24/7自动执行交易。
 - **智能信号识别**：实时监控K线数据，自动识别买卖信号并执行交易。
 - **多交易方式支持**：支持现货交易和合约交易，灵活的下单方式。
@@ -307,7 +308,9 @@ curl -X POST "http://localhost:8088/api/backtest/ta4j/run?endTime=2025-01-01%200
 
 2. **批量策略回测测试**
 ```bash
-curl -X POST "http://localhost:8088/api/backtest/ta4j/run-all?startTime=2024-01-01%2000%3A00%3A00&endTime=2024-12-01%2000%3A00%3A00&initialAmount=10000&symbol=BTC-USDT&interval=1D&saveResult=true&feeRatio=0.001"
+curl -X GET "http://localhost:8088/api/backtest/ta4j/run-all?startTime=2024-01-01%2000%3A00%3A00&endTime=2024-12-01%2000%3A00%3A00&initialAmount=10000&symbol=BTC-USDT&interval=1D&saveResult=true&feeRatio=0.001"
+
+
 ```
 
 ### 数据库迁移
@@ -415,3 +418,5 @@ mysql -u root -p okx_trading < src/main/resources/migration_add_risk_indicators.
 ---
 
 **OKX智能交易策略回测系统** - 让量化交易更智能，让策略开发更简单！
+
+[okx-v5-java](https://github.com/meuccibear/okx-v5-java)

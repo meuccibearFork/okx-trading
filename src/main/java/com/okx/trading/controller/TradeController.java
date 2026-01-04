@@ -29,7 +29,7 @@ import java.util.List;
 public class TradeController {
 
     private final OkxApiService okxApiService;
-    
+
     @Autowired
     public TradeController(OkxApiService okxApiService) {
         this.okxApiService = okxApiService;

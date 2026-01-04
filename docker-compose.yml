@@ -28,34 +28,34 @@ services:
       - okx-network
 
 # 已注释MySQL和Redis服务，使用本地服务
-#  mysql:
-#    image: mysql:8.0
-#    container_name: okx-trading-mysql
-#    restart: always
-#    ports:
-#      - "3306:3306"
-#    environment:
-#      - MYSQL_ROOT_PASSWORD=Password123?
-#      - MYSQL_DATABASE=okx_trading
-#      - TZ=Asia/Shanghai
-#    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone=+8:00
-#    volumes:
-#      - mysql-data:/var/lib/mysql
-#      - ./docker/mysql/init:/docker-entrypoint-initdb.d
-#    networks:
-#      - okx-network
-#
-#  redis:
-#    image: redis:6.2-alpine
-#    container_name: okx-trading-redis
-#    restart: always
-#    ports:
-#      - "6379:6379"
-#    command: redis-server --appendonly yes
-#    volumes:
-#      - redis-data:/data
-#    networks:
-#      - okx-network
+  mysql:
+    image: mysql:8.0.30
+    container_name: okx-trading-mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=Password123?
+      - MYSQL_DATABASE=okx_trading
+      - TZ=Asia/Shanghai
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone=+8:00
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - okx-network
+
+  redis:
+    image: redis:6-alpine
+    container_name: okx-trading-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - okx-network
 
 # 网络配置
 networks:
@@ -63,6 +63,6 @@ networks:
     driver: bridge
 
 # 注释卷配置，因为不再使用Docker中的MySQL和Redis
-#volumes:
-#  mysql-data:
-#  redis-data:
+volumes:
+  mysql-data:
+  redis-data:

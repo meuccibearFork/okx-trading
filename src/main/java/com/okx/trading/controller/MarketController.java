@@ -184,6 +184,28 @@ public class MarketController {
     }
 
     /**
+     * 订阅行情数据
+     *
+     * @param symbol 交易对，如BTC-USDT
+     * @return 操作结果
+     */
+    @Operation(summary = "订阅行情数据", description = "订阅指定交易对的实时行情数据")
+    @Parameters({
+            @Parameter(name = "symbol", description = "交易对 (格式为 基础资产-计价资产，如BTC-USDT、ETH-USDT等)",
+                    required = true,  example = "BTC-USDT" )
+    })
+    @GetMapping("/subscribe_ticker")
+    public ApiResponse<Boolean> subscribeTicker(
+            @NotBlank(message = "交易对不能为空") @RequestParam String symbol) {
+
+        log.info("订阅行情数据, symbol: {}", symbol);
+
+        boolean result = okxApiService.subscribeTicker(symbol);
+
+        return ApiResponse.success(result);
+    }
+
+    /**
      * 获取最新的K线数据
      *
      * @param symbol   交易对，如BTC-USDT

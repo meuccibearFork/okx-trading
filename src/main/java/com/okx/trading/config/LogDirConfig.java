@@ -18,7 +18,7 @@ import java.nio.file.Paths;
 @Configuration
 public class LogDirConfig {
     private static final Logger log = LoggerFactory.getLogger(LogDirConfig.class);
-    private static final String LOG_DIR = "logs";
+    private static final String LOG_DIR = "../logs";
 
     /**
      * 在应用启动时创建日志目录结构
@@ -28,19 +28,19 @@ public class LogDirConfig {
     public CommandLineRunner initLogDirectories() {
         return args -> {
             log.info("正在初始化日志目录结构...");
-            
+
             // 创建主日志目录
             createDirectoryIfNotExists(LOG_DIR);
-            
+
             // 创建子目录
             createDirectoryIfNotExists(LOG_DIR + "/all");
             createDirectoryIfNotExists(LOG_DIR + "/error");
             createDirectoryIfNotExists(LOG_DIR + "/api");
-            
+
             log.info("日志目录结构初始化完成");
         };
     }
-    
+
     /**
      * 如果目录不存在则创建
      * @param dirPath 目录路径
@@ -58,4 +58,4 @@ public class LogDirConfig {
             log.info("日志目录已存在: {}", path.toAbsolutePath());
         }
     }
-} 
+}

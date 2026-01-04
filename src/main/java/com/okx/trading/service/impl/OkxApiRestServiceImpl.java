@@ -14,10 +14,12 @@ import com.okx.trading.service.OkxApiService;
 import com.okx.trading.service.RedisCacheService;
 import com.okx.trading.util.BigDecimalUtil;
 import com.okx.trading.util.HttpUtil;
+import com.okx.trading.util.OkxUtils;
 import com.okx.trading.util.SignatureUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -35,15 +37,16 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(
-    name = "okx.api.connection-mode",
-    havingValue = "REST",
-    matchIfMissing = false
+        name = "okx.api.connection-mode",
+        havingValue = "REST",
+        matchIfMissing = false
 )
-public class OkxApiRestServiceImpl implements OkxApiService{
+public class OkxApiRestServiceImpl implements OkxApiService {
 
     private final OkHttpClient okHttpClient;
     private final OkxApiConfig okxApiConfig;
     private final RedisCacheService redisCacheService;
+    private final OkxUtils okxUtils;
     private static final String API_PATH = "/api/v5";
     public static final String MARKET_PATH = API_PATH + "/market";
     private static final String ACCOUNT_PATH = API_PATH + "/account";
@@ -58,25 +61,25 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @return K线数据列表
      */
     @Override
-    public List<Candlestick> getKlineData(String symbol, String interval, Integer limit){
-        try{
+    public List<Candlestick> getKlineData(String symbol, String interval, Integer limit) {
+        try {
             String url = okxApiConfig.getBaseUrl() + MARKET_PATH + "/candles";
             url = url + "?instId=" + symbol + "&bar=" + interval;
-            if(limit != null && limit > 0){
+            if (limit != null && limit > 0) {
                 url = url + "&limit=" + limit;
             }
 
             String response = HttpUtil.get(okHttpClient, url, null);
             JSONObject jsonResponse = JSON.parseObject(response);
 
-            if(! "0".equals(jsonResponse.getString("code"))){
+            if (!"0".equals(jsonResponse.getString("code"))) {
                 throw new OkxApiException(jsonResponse.getIntValue("code"), jsonResponse.getString("msg"));
             }
 
             JSONArray dataArray = jsonResponse.getJSONArray("data");
             List<Candlestick> result = new ArrayList<>();
 
-            for(int i = 0;i < dataArray.size();i++){
+            for (int i = 0; i < dataArray.size(); i++) {
                 JSONArray item = dataArray.getJSONArray(i);
 
                 // OKX API返回格式：[时间戳, 开盘价, 最高价, 最低价, 收盘价, 成交量, 成交额]
@@ -87,8 +90,8 @@ public class OkxApiRestServiceImpl implements OkxApiService{
                 // 转换时间戳为LocalDateTime
                 long timestamp = item.getLongValue(0);
                 LocalDateTime dateTime = LocalDateTime.ofInstant(
-                    Instant.ofEpochMilli(timestamp),
-                    ZoneId.of("UTC+8"));
+                        Instant.ofEpochMilli(timestamp),
+                        ZoneId.of("UTC+8"));
 
                 candlestick.setOpenTime(dateTime);
                 candlestick.setOpen(BigDecimalUtil.safeGen(item.getString(1)));
@@ -108,9 +111,9 @@ public class OkxApiRestServiceImpl implements OkxApiService{
             }
 
             return result;
-        }catch(OkxApiException e){
+        } catch (OkxApiException e) {
             throw e;
-        }catch(Exception e){
+        } catch (Exception e) {
             log.error("获取K线数据异常", e);
             throw new OkxApiException("获取K线数据失败: " + e.getMessage(), e);
         }
@@ -123,15 +126,15 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @return 行情数据
      */
     @Override
-    public Ticker getTicker(String symbol){
-        try{
+    public Ticker getTicker(String symbol) {
+        try {
             String url = okxApiConfig.getBaseUrl() + MARKET_PATH + "/ticker";
             url = url + "?instId=" + symbol;
 
             String response = HttpUtil.get(okHttpClient, url, null);
             JSONObject jsonResponse = JSON.parseObject(response);
 
-            if(! "0".equals(jsonResponse.getString("code"))){
+            if (!"0".equals(jsonResponse.getString("code"))) {
                 throw new OkxApiException(jsonResponse.getIntValue("code"), jsonResponse.getString("msg"));
             }
 
@@ -146,14 +149,14 @@ public class OkxApiRestServiceImpl implements OkxApiService{
             ticker.setPriceChange(priceChange);
             // 将最新价格写入Redis缓存
             BigDecimal lastPrice = ticker.getLastPrice();
-            if(lastPrice != null){
+            if (lastPrice != null) {
                 redisCacheService.updateCoinPrice(symbol, lastPrice);
             }
             // 计算24小时价格变动百分比
-            if(open24h.compareTo(BigDecimal.ZERO) > 0){
+            if (open24h.compareTo(BigDecimal.ZERO) > 0) {
                 BigDecimal changePercent = priceChange.multiply(BigDecimalUtil.safeGen("100")).divide(open24h, 2, BigDecimal.ROUND_HALF_UP);
                 ticker.setPriceChangePercent(changePercent);
-            }else{
+            } else {
                 ticker.setPriceChangePercent(BigDecimal.ZERO);
             }
 
@@ -170,13 +173,13 @@ public class OkxApiRestServiceImpl implements OkxApiService{
             // 转换时间戳为LocalDateTime
             long timestamp = data.getLongValue("ts");
             ticker.setTimestamp(LocalDateTime.ofInstant(
-                Instant.ofEpochMilli(timestamp),
-                ZoneId.of("UTC+8")));
+                    Instant.ofEpochMilli(timestamp),
+                    ZoneId.of("UTC+8")));
 
             return ticker;
-        }catch(OkxApiException e){
+        } catch (OkxApiException e) {
             throw e;
-        }catch(Exception e){
+        } catch (Exception e) {
             log.error("获取行情数据异常", e);
             throw new OkxApiException("获取行情数据失败: " + e.getMessage(), e);
         }
@@ -188,7 +191,7 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @return 账户余额信息
      */
     @Override
-    public AccountBalance getAccountBalance(){
+    public AccountBalance getAccountBalance() {
         return getBalance(false);
     }
 
@@ -198,7 +201,7 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @return 模拟账户余额信息
      */
     @Override
-    public AccountBalance getSimulatedAccountBalance(){
+    public AccountBalance getSimulatedAccountBalance() {
         return getBalance(true);
     }
 
@@ -208,19 +211,19 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @param isSimulated 是否为模拟账户
      * @return 账户余额信息
      */
-    private AccountBalance getBalance(boolean isSimulated){
-        try{
+    private AccountBalance getBalance(boolean isSimulated) {
+        try {
             String url = okxApiConfig.getBaseUrl() + ACCOUNT_PATH + "/balance";
             String timestamp = SignatureUtil.getIsoTimestamp();
             String method = "GET";
             String requestPath = ACCOUNT_PATH + "/balance";
 
-            Map<String,String> headers = buildHeaders(timestamp, method, requestPath, null, isSimulated);
+            Map<String, String> headers = okxUtils.buildHeaders(timestamp, method, requestPath, null, isSimulated);
 
             String response = HttpUtil.get(okHttpClient, url, headers);
             JSONObject jsonResponse = JSON.parseObject(response);
 
-            if(! "0".equals(jsonResponse.getString("code"))){
+            if (!"0".equals(jsonResponse.getString("code"))) {
                 throw new OkxApiException(jsonResponse.getIntValue("code"), jsonResponse.getString("msg"));
             }
 
@@ -228,7 +231,7 @@ public class OkxApiRestServiceImpl implements OkxApiService{
 
             AccountBalance accountBalance = new AccountBalance();
             accountBalance.setTotalEquity(BigDecimalUtil.safeGen(data.getString("totalEq")));
-            accountBalance.setAccountType(isSimulated?1:0);
+            accountBalance.setAccountType(isSimulated ? 1 : 0);
             accountBalance.setAccountId(data.getString("uid"));
 
 
@@ -236,7 +239,7 @@ public class OkxApiRestServiceImpl implements OkxApiService{
             JSONArray detailsArray = data.getJSONArray("details");
             List<AccountBalance.AssetBalance> assetBalances = new ArrayList<>();
 
-            for(int i = 0;i < detailsArray.size();i++){
+            for (int i = 0; i < detailsArray.size(); i++) {
                 JSONObject detail = detailsArray.getJSONObject(i);
 
                 AccountBalance.AssetBalance assetBalance = new AccountBalance.AssetBalance();
@@ -256,14 +259,14 @@ public class OkxApiRestServiceImpl implements OkxApiService{
 
             accountBalance.setAssetBalances(assetBalances);
             // 计算可用和冻结余额，OKX API可能返回方式不同
-            accountBalance.setTotalEquity(assetBalances.stream().map(AccountBalance.AssetBalance :: getUsdValue).reduce(BigDecimal :: add).orElseGet(() -> BigDecimal.ZERO));
-            accountBalance.setAvailableBalance(assetBalances.stream().map(bal -> bal.getUsdValue().divide(bal.getTotal(), 8, BigDecimal.ROUND_HALF_UP).multiply(bal.getAvailable())).reduce(BigDecimal :: add).orElseGet(() -> BigDecimal.ZERO));
+            accountBalance.setTotalEquity(assetBalances.stream().map(AccountBalance.AssetBalance::getUsdValue).reduce(BigDecimal::add).orElseGet(() -> BigDecimal.ZERO));
+            accountBalance.setAvailableBalance(assetBalances.stream().map(bal -> bal.getUsdValue().divide(bal.getTotal(), 8, BigDecimal.ROUND_HALF_UP).multiply(bal.getAvailable())).reduce(BigDecimal::add).orElseGet(() -> BigDecimal.ZERO));
             accountBalance.setFrozenBalance(accountBalance.getTotalEquity().subtract(accountBalance.getAvailableBalance()));
 
             return accountBalance;
-        }catch(OkxApiException e){
+        } catch (OkxApiException e) {
             throw e;
-        }catch(Exception e){
+        } catch (Exception e) {
             log.error("获取账户余额异常", e);
             throw new OkxApiException("获取账户余额失败: " + e.getMessage(), e);
         }
@@ -278,16 +281,16 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @return 订单列表
      */
     @Override
-    public List<Order> getOrders(String symbol, String status, Integer limit){
-        try{
+    public List<Order> getOrders(String symbol, String status, Integer limit) {
+        try {
             String url = okxApiConfig.getBaseUrl() + TRADE_PATH + "/orders-history";
             url = url + "?instId=" + symbol;
 
-            if(status != null && ! status.isEmpty()){
+            if (status != null && !status.isEmpty()) {
                 url = url + "&state=" + status;
             }
 
-            if(limit != null && limit > 0){
+            if (limit != null && limit > 0) {
                 url = url + "&limit=" + limit;
             }
 
@@ -295,27 +298,27 @@ public class OkxApiRestServiceImpl implements OkxApiService{
             String method = "GET";
             String requestPath = TRADE_PATH + "/orders-history" + "?instId=" + symbol;
 
-            if(status != null && ! status.isEmpty()){
+            if (status != null && !status.isEmpty()) {
                 requestPath = requestPath + "&state=" + status;
             }
 
-            if(limit != null && limit > 0){
+            if (limit != null && limit > 0) {
                 requestPath = requestPath + "&limit=" + limit;
             }
 
-            Map<String,String> headers = buildHeaders(timestamp, method, requestPath, null, false);
+            Map<String, String> headers = okxUtils.buildHeaders(timestamp, method, requestPath, null, false);
 
             String response = HttpUtil.get(okHttpClient, url, headers);
             JSONObject jsonResponse = JSON.parseObject(response);
 
-            if(! "0".equals(jsonResponse.getString("code"))){
+            if (!"0".equals(jsonResponse.getString("code"))) {
                 throw new OkxApiException(jsonResponse.getIntValue("code"), jsonResponse.getString("msg"));
             }
 
             JSONArray dataArray = jsonResponse.getJSONArray("data");
             List<Order> result = new ArrayList<>();
 
-            for(int i = 0;i < dataArray.size();i++){
+            for (int i = 0; i < dataArray.size(); i++) {
                 JSONObject item = dataArray.getJSONObject(i);
 
                 Order order = new Order();
@@ -350,13 +353,13 @@ public class OkxApiRestServiceImpl implements OkxApiService{
                 // 时间转换
                 long cTime = item.getLongValue("cTime");
                 order.setCreateTime(LocalDateTime.ofInstant(
-                    Instant.ofEpochMilli(cTime),
-                    ZoneId.of("UTC+8")));
+                        Instant.ofEpochMilli(cTime),
+                        ZoneId.of("UTC+8")));
 
                 long uTime = item.getLongValue("uTime");
                 order.setUpdateTime(LocalDateTime.ofInstant(
-                    Instant.ofEpochMilli(uTime),
-                    ZoneId.of("UTC+8")));
+                        Instant.ofEpochMilli(uTime),
+                        ZoneId.of("UTC+8")));
 
                 // 设置模拟标志
                 order.setSimulated(false);
@@ -369,9 +372,9 @@ public class OkxApiRestServiceImpl implements OkxApiService{
             }
 
             return result;
-        }catch(OkxApiException e){
+        } catch (OkxApiException e) {
             throw e;
-        }catch(Exception e){
+        } catch (Exception e) {
             log.error("获取订单列表异常", e);
             throw new OkxApiException("获取订单列表失败: " + e.getMessage(), e);
         }
@@ -384,7 +387,7 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @return 创建的订单
      */
     @Override
-    public Order createSpotOrder(OrderRequest orderRequest){
+    public Order createSpotOrder(OrderRequest orderRequest) {
         // 设置交易品种为现货
         return createOrder(orderRequest, "SPOT", orderRequest.getSimulated() != null && orderRequest.getSimulated());
     }
@@ -396,7 +399,7 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @return 创建的订单
      */
     @Override
-    public Order createFuturesOrder(OrderRequest orderRequest){
+    public Order createFuturesOrder(OrderRequest orderRequest) {
         // 设置交易品种为永续合约
         return createOrder(orderRequest, "SWAP", orderRequest.getSimulated() != null && orderRequest.getSimulated());
     }
@@ -409,8 +412,8 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @param isSimulated  是否为模拟交易
      * @return 创建的订单
      */
-    private Order createOrder(OrderRequest orderRequest, String instType, boolean isSimulated){
-        try{
+    private Order createOrder(OrderRequest orderRequest, String instType, boolean isSimulated) {
+        try {
             String url = okxApiConfig.getBaseUrl() + TRADE_PATH + "/order";
             // 按金额下单,按数量下单,限价单,市价单
 
@@ -418,34 +421,34 @@ public class OkxApiRestServiceImpl implements OkxApiService{
             requestBody.put("instId", orderRequest.getSymbol());
             requestBody.put("tdMode", "cash"); // 资金模式，cash为现钞
             requestBody.put("side", orderRequest.getSide().toLowerCase());
-            if(orderRequest.getType() != null){
+            if (orderRequest.getType() != null) {
                 requestBody.put("ordType", mapToOkxOrderType(orderRequest.getType()));
-            }else{
+            } else {
                 requestBody.put("ordType", "market");
             }
             // 处理市价单和限价单逻辑
             //币币市价单委托数量sz的单位,base_ccy: 交易货币 ；quote_ccy：计价货币,仅适用于币币市价订单,默认买单为quote_ccy，卖单为base_ccy
-            if(orderRequest.getAmount() != null){
+            if (orderRequest.getAmount() != null) {
                 // 市价\限价,指定金额
                 requestBody.put("sz", orderRequest.getAmount().toString());
                 requestBody.put("tgtCcy", "quote_ccy");
-            }else if(orderRequest.getQuantity() != null){
+            } else if (orderRequest.getQuantity() != null) {
                 //指定数量,市价单不指定价格,限价单指定价格
                 requestBody.put("sz", orderRequest.getQuantity().toString());
                 requestBody.put("tgtCcy", "base_ccy");
-                if(orderRequest.getPrice() != null){
+                if (orderRequest.getPrice() != null) {
                     requestBody.put("px", orderRequest.getPrice().toString());
-                }else{
+                } else {
                     BigDecimal coinPrice = redisCacheService.getCoinPrice(orderRequest.getSymbol());
                     requestBody.put("px", coinPrice.toString());
                 }
             }
-            if(orderRequest.getClientOrderId() != null){
+            if (orderRequest.getClientOrderId() != null) {
                 requestBody.put("clOrdId", orderRequest.getClientOrderId());
             }
 
             // 设置杠杆倍数（合约交易）
-            if("SWAP".equals(instType) && orderRequest.getLeverage() != null){
+            if ("SWAP".equals(instType) && orderRequest.getLeverage() != null) {
                 requestBody.put("lever", orderRequest.getLeverage().toString());
             }
 
@@ -464,14 +467,14 @@ public class OkxApiRestServiceImpl implements OkxApiService{
             String method = "POST";
             String requestPath = TRADE_PATH + "/order";
 
-            Map<String,String> headers = buildHeaders(timestamp, method, requestPath, requestBodyStr, isSimulated);
+            Map<String, String> headers = okxUtils.buildHeaders(timestamp, method, requestPath, requestBodyStr, isSimulated);
 
             String response = HttpUtil.post(okHttpClient, url, headers, requestBodyStr);
             JSONObject jsonResponse = JSON.parseObject(response);
 
-            if(! "0".equals(jsonResponse.getString("code"))){
+            if (!"0".equals(jsonResponse.getString("code"))) {
                 JSONArray data = jsonResponse.getJSONArray("data");
-                if(data.size() > 0){
+                if (data.size() > 0) {
                     JSONObject msg = data.getJSONObject(0);
                     throw new OkxApiException(msg.getIntValue("sCode"), String.format("创建订单失败: %s", msg.getString("sMsg")));
                 }
@@ -498,9 +501,9 @@ public class OkxApiRestServiceImpl implements OkxApiService{
             order.setSimulated(isSimulated);
 
             return order;
-        }catch(OkxApiException e){
+        } catch (OkxApiException e) {
             throw e;
-        }catch(Exception e){
+        } catch (Exception e) {
             log.error("创建订单异常", e);
             throw new OkxApiException("创建订单失败: " + e.getMessage(), e);
         }
@@ -514,8 +517,8 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @return 是否成功
      */
     @Override
-    public boolean cancelOrder(String symbol, String orderId){
-        try{
+    public boolean cancelOrder(String symbol, String orderId) {
+        try {
             String url = okxApiConfig.getBaseUrl() + TRADE_PATH + "/cancel-order";
 
             JSONObject requestBody = new JSONObject();
@@ -527,12 +530,12 @@ public class OkxApiRestServiceImpl implements OkxApiService{
             String method = "POST";
             String requestPath = TRADE_PATH + "/cancel-order";
 
-            Map<String,String> headers = buildHeaders(timestamp, method, requestPath, requestBodyStr, false);
+            Map<String, String> headers = okxUtils.buildHeaders(timestamp, method, requestPath, requestBodyStr, false);
 
             String response = HttpUtil.post(okHttpClient, url, headers, requestBodyStr);
             JSONObject jsonResponse = JSON.parseObject(response);
 
-            if(! "0".equals(jsonResponse.getString("code"))){
+            if (!"0".equals(jsonResponse.getString("code"))) {
                 throw new OkxApiException(jsonResponse.getIntValue("code"), jsonResponse.getString("msg"));
             }
 
@@ -540,39 +543,12 @@ public class OkxApiRestServiceImpl implements OkxApiService{
 
             // 判断是否取消成功
             return "0".equals(data.getString("sCode"));
-        }catch(OkxApiException e){
+        } catch (OkxApiException e) {
             throw e;
-        }catch(Exception e){
+        } catch (Exception e) {
             log.error("取消订单异常", e);
             throw new OkxApiException("取消订单失败: " + e.getMessage(), e);
         }
-    }
-
-    /**
-     * 构建请求头
-     *
-     * @param timestamp   ISO格式的时间戳
-     * @param method      HTTP方法
-     * @param requestPath 请求路径
-     * @param body        请求体
-     * @param isSimulated 是否为模拟交易
-     * @return 包含认证信息的请求头
-     */
-    private Map<String,String> buildHeaders(String timestamp, String method, String requestPath, String body, boolean isSimulated){
-        Map<String,String> headers = new HashMap<>();
-
-        headers.put("OK-ACCESS-KEY", okxApiConfig.getApiKey());
-        headers.put("OK-ACCESS-SIGN", SignatureUtil.sign(timestamp, method, requestPath, body, okxApiConfig.getSecretKey()));
-        headers.put("OK-ACCESS-TIMESTAMP", timestamp);
-        headers.put("OK-ACCESS-PASSPHRASE", okxApiConfig.getPassphrase());
-        headers.put("Content-Type", "application/json");
-
-        // 如果是模拟交易，设置模拟交易的标志
-        if(isSimulated){
-            headers.put("x-simulated-trading", "1");
-        }
-
-        return headers;
     }
 
     /**
@@ -581,8 +557,8 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @param okxStatus OKX订单状态
      * @return 标准订单状态
      */
-    private String mapOrderStatus(String okxStatus){
-        switch(okxStatus){
+    private String mapOrderStatus(String okxStatus) {
+        switch (okxStatus) {
             case "live":
                 return "NEW";
             case "partially_filled":
@@ -604,8 +580,8 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @param okxType OKX订单类型
      * @return 标准订单类型
      */
-    private String mapOrderType(String okxType){
-        switch(okxType){
+    private String mapOrderType(String okxType) {
+        switch (okxType) {
             case "limit":
                 return "LIMIT";
             case "market":
@@ -621,8 +597,8 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @param standardType 标准订单类型
      * @return OKX订单类型
      */
-    private String mapToOkxOrderType(String standardType){
-        switch(standardType.toUpperCase()){
+    private String mapToOkxOrderType(String standardType) {
+        switch (standardType.toUpperCase()) {
             case "LIMIT":
                 return "limit";
             case "MARKET":
@@ -638,12 +614,12 @@ public class OkxApiRestServiceImpl implements OkxApiService{
      * @param standardTif 标准TimeInForce
      * @return OKX TimeInForce
      */
-    private String mapToOkxTimeInForce(String standardTif){
-        if(standardTif == null){
+    private String mapToOkxTimeInForce(String standardTif) {
+        if (standardTif == null) {
             return "gtc";
         }
 
-        switch(standardTif.toUpperCase()){
+        switch (standardTif.toUpperCase()) {
             case "GTC":
                 return "gtc";
             case "IOC":
@@ -656,10 +632,17 @@ public class OkxApiRestServiceImpl implements OkxApiService{
     }
 
     @Override
-    public boolean unsubscribeTicker(String symbol){
+    public boolean unsubscribeTicker(String symbol) {
         // REST API模式下，没有实时订阅，只是单次请求，所以不需要取消订阅
         log.info("REST API模式下不需要取消订阅行情数据，交易对: {}", symbol);
         return true;
+    }
+
+    @Override
+    public boolean subscribeTicker(String symbol) {
+        // REST API模式下，没有实时订阅，只是单次请求，所以不需要取消订阅
+        log.info("REST API模式下不需要取消订阅行情数据，交易对: {}", symbol);
+        return false;
     }
 
     @Override
@@ -668,27 +651,27 @@ public class OkxApiRestServiceImpl implements OkxApiService{
     }
 
     @Override
-    public boolean unsubscribeKlineData(String symbol, String interval){
+    public boolean unsubscribeKlineData(String symbol, String interval) {
         log.info("不支持取消订阅K线数据，因为REST API不需要订阅");
         return true;
     }
 
     @Override
-    public List<Candlestick> getHistoryKlineData(String symbol, String interval, Long startTime, Long endTime, Integer limit){
-        try{
+    public List<Candlestick> getHistoryKlineData(String symbol, String interval, Long startTime, Long endTime, Integer limit) {
+        try {
             String url = okxApiConfig.getBaseUrl() + MARKET_PATH + "/history-candles";
             url = url + "?instId=" + symbol + "&bar=" + interval;
 
-            if(startTime != null){
+            if (startTime != null) {
                 url = url + "&before=" + startTime;
 
             }
 
-            if(endTime != null){
+            if (endTime != null) {
                 url = url + "&after=" + endTime;
             }
 
-            if(limit != null && limit > 0){
+            if (limit != null && limit > 0) {
                 url = url + "&limit=" + limit;
             }
 
@@ -696,14 +679,14 @@ public class OkxApiRestServiceImpl implements OkxApiService{
             String response = HttpUtil.get(okHttpClient, url, null);
             JSONObject jsonResponse = JSON.parseObject(response);
 
-            if(! "0".equals(jsonResponse.getString("code"))){
+            if (!"0".equals(jsonResponse.getString("code"))) {
                 throw new OkxApiException(jsonResponse.getIntValue("code"), jsonResponse.getString("msg"));
             }
 
             JSONArray dataArray = jsonResponse.getJSONArray("data");
             List<Candlestick> result = new ArrayList<>();
 
-            for(int i = 0;i < dataArray.size();i++){
+            for (int i = 0; i < dataArray.size(); i++) {
                 JSONArray item = dataArray.getJSONArray(i);
 
                 // OKX API返回格式：[时间戳, 开盘价, 最高价, 最低价, 收盘价, 成交量, 成交额]
@@ -714,8 +697,8 @@ public class OkxApiRestServiceImpl implements OkxApiService{
                 // 转换时间戳为LocalDateTime
                 long timestamp = item.getLongValue(0);
                 LocalDateTime dateTime = LocalDateTime.ofInstant(
-                    Instant.ofEpochMilli(timestamp),
-                    ZoneId.of("UTC+8"));
+                        Instant.ofEpochMilli(timestamp),
+                        ZoneId.of("UTC+8"));
 
                 candlestick.setOpenTime(dateTime);
                 candlestick.setOpen(BigDecimalUtil.safeGen(item.getString(1)));
@@ -735,9 +718,9 @@ public class OkxApiRestServiceImpl implements OkxApiService{
             }
 
             return result;
-        }catch(OkxApiException e){
+        } catch (OkxApiException e) {
             throw e;
-        }catch(Exception e){
+        } catch (Exception e) {
             log.error("获取历史K线数据异常", e);
             throw new OkxApiException("获取历史K线数据失败: " + e.getMessage(), e);
         }
@@ -746,12 +729,12 @@ public class OkxApiRestServiceImpl implements OkxApiService{
     /**
      * 根据开盘时间和K线间隔计算收盘时间
      */
-    private LocalDateTime calculateCloseTime(LocalDateTime openTime, String interval){
+    private LocalDateTime calculateCloseTime(LocalDateTime openTime, String interval) {
         // 解析时间单位和数量
         String unit = interval.substring(interval.length() - 1);
         int amount = Integer.parseInt(interval.substring(0, interval.length() - 1));
 
-        switch(unit){
+        switch (unit) {
             case "m":
                 return openTime.plusMinutes(amount);
             case "H":

@@ -200,5 +200,7 @@ public class RealTimeStrategyEntity {
         this.startTime = startTime;
         this.tradeAmount = tradeAmount;
         this.strategyName = strategyName;
+        this.lastSingalTime = LocalDateTime.now();
+        this.lastTradeTime = LocalDateTime.now();
     }
 }

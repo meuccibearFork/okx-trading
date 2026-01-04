@@ -91,6 +91,8 @@ public interface OkxApiService {
      */
     boolean unsubscribeTicker(String symbol);
 
+    boolean subscribeTicker(String symbol);
+
     /**
      * 订阅K线数据
      *

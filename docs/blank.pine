@@ -1,0 +1,76 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © yjiawen
+
+//@version=6
+strategy("黑马策略A",
+     overlay=true,
+     default_qty_type=strategy.percent_of_equity,
+     default_qty_value=10,   // 模拟 10x 杠杆：每单占用 10% 资金（示例）
+     pyramiding=0,
+     calc_on_order_fills=true,
+     calc_on_every_tick=true)
+
+// ===== 输入 =====
+htf              = input.timeframe("240", "Higher timeframe (4H)")
+trigger_points   = input.float(10.0, "触发启用移动止盈的盈利阈值 (点)", step=1)
+trail_offset_in  = input.float(10.0, "移动止盈 - trail_offset (点)", step=1)
+trail_points_in  = input.float(10.0, "移动止盈 - trail_points (点)", step=1)
+
+// ===== 获取 4H OHLC 与 平均价 =====
+[o4, h4, l4, c4, t4] = request.security(syminfo.tickerid, htf, [open, high, low, close, time])
+avg4      = (o4 + h4 + l4 + c4) / 4.0 每4小时
+avg4_prev = avg4[1]    上一次
+new_htf_bar = ta.change(t4) != 0    上一次和当前的收盘价比较是否一样
+
+// ===== 信号 =====
+long_signal  = new_htf_bar and (avg4 > avg4_prev)
+short_signal = new_htf_bar and (avg4 < avg4_prev)
+
+// ===== 上一根 HTF 高低，用作初始止损 =====
+prev_htf_high = h4[1]
+prev_htf_low  = l4[1]
+
+// ===== 持仓信息 & 盈利点数计算 =====
+is_long  = strategy.position_size > 0
+is_short = strategy.position_size < 0
+entry_price = strategy.position_avg_price
+
+profit_points = 0.0
+if is_long
+    profit_points := (close - entry_price)
+else if is_short
+    profit_points := (entry_price - close)
+else
+    profit_points := 0.0
+
+// ===== 下单与退出逻辑 =====
+// 我们为每个方向使用独立 entry_id 和 exit_id
+long_id_heima = "LongEntry"
+short_id_heima = "ShortEntry"
+long_exit_id_heima = "LongExit"
+short_exit_id_heima = "ShortExit"
+
+
+if(strategy.position_size == 0){
+    if (long_signal){
+        // 新开多：带初始 stop 为上一根 4H 的 low（保证有退出参数）
+        strategy.entry(long_id_heima, strategy.long)
+        strategy.exit(long_exit_id_heima, from_entry=long_id_heima, stop=prev_htf_low)
+    }else if (short_signal){
+        // 新开空：带初始 stop 为上一根 4H 的 high
+        strategy.entry(short_id_heima, strategy.short)
+        strategy.exit(short_exit_id_heima, from_entry=short_id_heima, stop=prev_htf_high)
+    }
+}
+
+// 当持仓并且浮动盈利超过 trigger_points 时，改用拖动止盈（必须同时提供 trail_offset 与 trail_points）
+if is_long and profit_points >= trigger_points
+    // 注意：这里我们重新调用 strategy.exit，使用与拖动相关的参数对 (trail_offset & trail_points)
+    strategy.exit(long_exit_id_heima, from_entry=long_id_heima, trail_offset=trail_offset_in, trail_points=trail_points_in)
+
+if is_short and profit_points >= trigger_points
+    strategy.exit(short_exit_id_heima, from_entry=short_id_heima, trail_offset=trail_offset_in, trail_points=trail_points_in)
+
+// ===== 可视化提示 =====
+plotshape(long_signal,  title="开多 (4H)",  location=location.belowbar, color=color.green,  style=shape.triangleup,   size=size.small, text="多")
+plotshape(short_signal, title="开空 (4H)",  location=location.abovebar, color=color.red,    style=shape.triangledown, size=size.small, text="空")

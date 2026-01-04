@@ -3,11 +3,13 @@ package com.okx.trading.util;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.okx.trading.config.OkxApiConfig;
+import com.okx.trading.constant.log.LoggerName;
 import com.okx.trading.exception.OkxApiException;
 import com.okx.trading.event.WebSocketReconnectEvent;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,8 +20,6 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
@@ -223,7 +223,7 @@ public class WebSocketUtil {
                     @Override
                     public void onMessage(WebSocket webSocket, String text) {
                         lastBusinessMessageTime.set(System.currentTimeMillis());
-                        handleMessage(text);
+                        handleMessage(WebSocketReconnectEvent.ReconnectType.BUSINESS, text);
                     }
 
                     @Override
@@ -279,7 +279,7 @@ public class WebSocketUtil {
                     @Override
                     public void onMessage(WebSocket webSocket, String text) {
                         lastPublicMessageTime.set(System.currentTimeMillis());
-                        handleMessage(text);
+                        handleMessage(WebSocketReconnectEvent.ReconnectType.PUBLIC, text);
                     }
 
                     @Override
@@ -341,7 +341,7 @@ public class WebSocketUtil {
                     @Override
                     public void onMessage(WebSocket webSocket, String text) {
                         lastPrivateMessageTime.set(System.currentTimeMillis());
-                        handleMessage(text);
+                        handleMessage(WebSocketReconnectEvent.ReconnectType.PRIVATE, text);
                     }
 
                     @Override
@@ -519,11 +519,14 @@ public class WebSocketUtil {
         }
     }
 
+    private static final Logger log = LoggerFactory.getLogger(LoggerName.WSS_MSG);
+
     /**
      * 处理接收到的WebSocket消息
      */
     @Async("klineHandleScheduler")
-    private void handleMessage(String message) {
+    protected void handleMessage(WebSocketReconnectEvent.ReconnectType reconnectType, String message) {
+        log.info("<message.{}>: {}", reconnectType, message);
         try {
             // 处理简单的ping-pong响应
             if ("ping".equals(message)) {

@@ -1,5 +1,6 @@
 package com.okx.trading.strategy;
 
+import com.alibaba.fastjson.JSON;
 import com.okx.trading.model.market.Candlestick;
 import com.okx.trading.model.trade.Order;
 import com.okx.trading.model.entity.RealTimeOrderEntity;
@@ -252,15 +253,15 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                 }
             }
 
-            Order order = tradeController.createSpotOrder(
+            Order order = tradeController.createFuturesOrder(
                     state.getSymbol(),
                     null,
                     side,
                     null,
                     preQuantity,
                     preAmount,
-                    null, null, null, null,
-                    false, state.getId()
+                    null, null, null, 10,
+                    false, false
             ).getData();
 
             if (order != null) {
@@ -407,6 +408,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                 try {
                     log.info("准备启动策略: strategyCode={}, symbol={}, interval={}",
                             strategyEntity.getStrategyCode(), strategyEntity.getSymbol(), strategyEntity.getInterval());
+
                     Map<String, Object> response = startExecuteRealTimeStrategy(strategyEntity);
                     String status = (String) response.get("status");
                     if (status.equals(SUCCESS)) {
@@ -449,6 +451,10 @@ public class RealTimeStrategyManager implements ApplicationRunner {
         return new ConcurrentHashMap<>(runningStrategies);
     }
 
+    /**
+     * 开始执行实时战略
+     * @param strategyEntity 策略信息
+     */
     public Map<String, Object> startExecuteRealTimeStrategy(RealTimeStrategyEntity strategyEntity) {
         Map<String, Object> response = new HashMap<>();
 
@@ -487,6 +493,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
         try {
             ta4jStrategy = StrategyRegisterCenter.
                     createStrategy(runningBarSeries.get(strategyEntity.getSymbol() + "_" + strategyEntity.getInterval()), strategyEntity.getStrategyCode());
+            log.info("<strategyEntity>: {}", JSON.toJSONString(strategyEntity));
             strategyEntity = realTimeStrategyRepository.save(strategyEntity);
             strategyEntity.setStrategy(ta4jStrategy);
         } catch (Exception e) {

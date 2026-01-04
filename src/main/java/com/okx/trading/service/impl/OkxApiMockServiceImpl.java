@@ -512,6 +512,12 @@ public class OkxApiMockServiceImpl implements OkxApiService {
     }
 
     @Override
+    public boolean subscribeTicker(String symbol) {
+        log.info("模拟取消订阅行情数据，交易对: {}", symbol);
+        return false;
+    }
+
+    @Override
     public boolean subscribeKlineData(String symbol, String interval) {
         return false;
     }
@@ -575,25 +581,25 @@ public class OkxApiMockServiceImpl implements OkxApiService {
     public List<Ticker> getAllTickers() {
         // 定义常用交易对列表
         List<String> symbols = Arrays.asList(
-                "BTC-USDT", "ETH-USDT", "SOL-USDT", "BNB-USDT", "XRP-USDT", 
+                "BTC-USDT", "ETH-USDT", "SOL-USDT", "BNB-USDT", "XRP-USDT",
                 "ADA-USDT", "DOGE-USDT", "TRX-USDT", "DOT-USDT", "MATIC-USDT"
         );
-        
+
         List<Ticker> tickers = new ArrayList<>();
-        
+
         // 对每个交易对获取行情数据
         for (String symbol : symbols) {
             Ticker ticker = getTicker(symbol);
             tickers.add(ticker);
         }
-        
+
         // 增加一些已存在于缓存中但不在默认列表中的交易对
         tickerCache.forEach((symbol, ticker) -> {
             if (!symbols.contains(symbol)) {
                 tickers.add(ticker);
             }
         });
-        
+
         return tickers;
     }
 }

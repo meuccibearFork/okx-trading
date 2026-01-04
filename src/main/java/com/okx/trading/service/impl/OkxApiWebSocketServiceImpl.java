@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.okx.trading.config.OkxApiConfig;
-import com.okx.trading.exception.BusinessException;
 import com.okx.trading.exception.OkxApiException;
 import com.okx.trading.model.account.AccountBalance;
 import com.okx.trading.model.account.AccountBalance.AssetBalance;
@@ -18,11 +17,7 @@ import com.okx.trading.service.NotificationService;
 import com.okx.trading.service.OkxApiService;
 import com.okx.trading.service.RedisCacheService;
 import com.okx.trading.strategy.RealTimeStrategyManager;
-import com.okx.trading.util.BigDecimalUtil;
-import com.okx.trading.util.HttpUtil;
-import com.okx.trading.util.SignatureUtil;
-import com.okx.trading.util.WebSocketUtil;
-import lombok.Data;
+import com.okx.trading.util.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -48,7 +43,6 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 import static com.okx.trading.constant.IndicatorInfo.BALANCE;
-import static com.okx.trading.constant.IndicatorInfo.RUNNING;
 import static com.okx.trading.service.impl.OkxApiRestServiceImpl.MARKET_PATH;
 
 import java.io.File;
@@ -79,6 +73,7 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
     private final WebSocketUtil webSocketUtil;
     private final RedisCacheService redisCacheService;
     private final OkHttpClient okHttpClient;
+    private final OkxUtils okxUtils;
     @Lazy
     private final KlineCacheService klineCacheService;
     @Lazy
@@ -446,15 +441,15 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
     }
 
     @Override
-    public Ticker getTicker(String symbol){
-        try{
+    public Ticker getTicker(String symbol) {
+        try {
             String url = okxApiConfig.getBaseUrl() + MARKET_PATH + "/ticker";
             url = url + "?instId=" + symbol;
 
             String response = HttpUtil.get(okHttpClient, url, null);
             JSONObject jsonResponse = JSON.parseObject(response);
 
-            if(! "0".equals(jsonResponse.getString("code"))){
+            if (!"0".equals(jsonResponse.getString("code"))) {
                 throw new OkxApiException(jsonResponse.getIntValue("code"), jsonResponse.getString("msg"));
             }
 
@@ -469,14 +464,14 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
             ticker.setPriceChange(priceChange);
             // 将最新价格写入Redis缓存
             BigDecimal lastPrice = ticker.getLastPrice();
-            if(lastPrice != null){
+            if (lastPrice != null) {
                 redisCacheService.updateCoinPrice(symbol, lastPrice);
             }
             // 计算24小时价格变动百分比
-            if(open24h.compareTo(BigDecimal.ZERO) > 0){
+            if (open24h.compareTo(BigDecimal.ZERO) > 0) {
                 BigDecimal changePercent = priceChange.multiply(BigDecimalUtil.safeGen("100")).divide(open24h, 2, BigDecimal.ROUND_HALF_UP);
                 ticker.setPriceChangePercent(changePercent);
-            }else{
+            } else {
                 ticker.setPriceChangePercent(BigDecimal.ZERO);
             }
 
@@ -497,9 +492,9 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
                     ZoneId.of("UTC+8")));
 
             return ticker;
-        }catch(OkxApiException e){
+        } catch (OkxApiException e) {
             throw e;
-        }catch(Exception e){
+        } catch (Exception e) {
             log.error("获取行情数据异常", e);
             throw new OkxApiException("获取行情数据失败: " + e.getMessage(), e);
         }
@@ -784,21 +779,8 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
         String requestPath = "/api/v5/trade/order?instId="
                 + orderRequest.getSymbol() + "&clOrdId=" + clientOrderId;
 
-        // 生成签名
-        String sign = SignatureUtil.sign(timestamp, "GET", requestPath, "", okxApiConfig.getSecretKey());
-
-        Request.Builder requestBuilder = new Request.Builder()
-                .url(apiUrlBuilder.toString())
-                .addHeader("Content-Type", "application/json")
-                .addHeader("OK-ACCESS-KEY", okxApiConfig.getApiKey())
-                .addHeader("OK-ACCESS-SIGN", sign)
-                .addHeader("OK-ACCESS-TIMESTAMP", timestamp)
-                .addHeader("OK-ACCESS-PASSPHRASE", okxApiConfig.getPassphrase());
-
-        // 如果是模拟交易需要额外添加标志
-        if (isSimulated) {
-            requestBuilder.addHeader("x-simulated-trading", "1");
-        }
+        Request.Builder requestBuilder = okxUtils.buildRequest(timestamp, "GET", requestPath, "", isSimulated)
+                .url(apiUrlBuilder.toString());
 
         Request request = requestBuilder.get().build();
         try (Response response = okHttpClient.newCall(request).execute();) {
@@ -835,8 +817,9 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
 
     /**
      * 将订单响应数据追加到CSV文件
-     * @param responseBody 响应数据JSON字符串
-     * @param symbol 交易对
+     *
+     * @param responseBody  响应数据JSON字符串
+     * @param symbol        交易对
      * @param clientOrderId 客户端订单ID
      */
     private void appendOrderResponseToCsv(String responseBody, String symbol, String clientOrderId) {
@@ -1223,6 +1206,32 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
         }
     }
 
+
+    @Override
+    public boolean subscribeTicker(String symbol) {
+        try {
+            // 检查是否已订阅
+            if (subscribedSymbols.contains(symbol)) {
+                log.debug("币种 {} 已订阅，无需订阅", symbol);
+                return true;
+            }
+
+            String channel = "tickers";
+            String key = channel + "_" + symbol;
+
+            log.info("订阅行情数据，交易对: {}", symbol);
+            webSocketUtil.subscribePublicTopic(channel, symbol);
+
+            // 添加订阅标记
+            subscribedSymbols.add(symbol);
+
+            return true;
+        } catch (Exception e) {
+            log.error("订阅行情数据失败: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
     @Override
     public boolean subscribeKlineData(String symbol, String interval) {
         try {
@@ -1447,21 +1456,8 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
             // 构建请求路径（用于签名）
             String requestPath = "/api/v5/trade/orders-pending?instType=SPOT&instId=" + symbol;
 
-            // 生成签名
-            String sign = SignatureUtil.sign(timestamp, "GET", requestPath, "", okxApiConfig.getSecretKey());
-
-            Request.Builder requestBuilder = new Request.Builder()
-                    .url(apiUrlBuilder.toString())
-                    .addHeader("Content-Type", "application/json")
-                    .addHeader("OK-ACCESS-KEY", okxApiConfig.getApiKey())
-                    .addHeader("OK-ACCESS-SIGN", sign)
-                    .addHeader("OK-ACCESS-TIMESTAMP", timestamp)
-                    .addHeader("OK-ACCESS-PASSPHRASE", okxApiConfig.getPassphrase());
-
-            // 如果是模拟交易
-            if (isSimulated) {
-                requestBuilder.addHeader("x-simulated-trading", "1");
-            }
+            Request.Builder requestBuilder = okxUtils.buildRequest(timestamp, "GET", requestPath, "", isSimulated)
+                    .url(apiUrlBuilder.toString());
 
             Request request = requestBuilder.get().build();
 

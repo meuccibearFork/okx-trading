@@ -1,5 +1,6 @@
 # 使用Java 8作为基础镜像
-FROM openjdk:8-jdk-alpine
+#FROM openjdk:8-jdk-alpine
+FROM zhuozhuang/java:1.8-glibc
 
 # 设置工作目录
 WORKDIR /app
@@ -28,4 +29,4 @@ COPY ${JAR_FILE} app.jar
 EXPOSE 8080
 
 # 设置启动命令
-ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -Djava.security.egd=file:/dev/./urandom -jar /app/app.jar"] 
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -Djava.security.egd=file:/dev/./urandom -jar /app/app.jar"]
