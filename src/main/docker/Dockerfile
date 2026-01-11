@@ -7,7 +7,8 @@ FROM zhuozhuang/java:1.8-glibc
 WORKDIR /app
 
 # 添加构建参数
-ARG JAR_FILE=maven/*.jar
+#ARG JAR_FILE=maven/*.jar
+ARG JAR_FILE=maven/${project.build.finalName}.jar
 ARG PROXY_HOST=localhost
 ARG PROXY_PORT=10809
 
