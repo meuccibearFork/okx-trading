@@ -1,6 +1,8 @@
 package com.okx.trading.infrastructure.okx;
 
+import com.alibaba.fastjson.JSONObject;
 import io.reactivex.rxjava3.core.Single;
+import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
@@ -30,6 +32,12 @@ public interface OkxApi {
      */
     @GET("/api/v5/account/balance")
     Single<OkxRestResponse<Balance>> getBalance(@Query("ccy") String ccy);
+
+
+    //查看持仓信息 Get Positions
+    @GET("/api/v5/account/positions")
+    Single<JSONObject> getPositions(@Query("instType") String instType, @Query("instId") String instId, @Query("posId") String posId);
+
 
     /**
      * 下单

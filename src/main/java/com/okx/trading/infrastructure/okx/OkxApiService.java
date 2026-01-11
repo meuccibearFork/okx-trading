@@ -1,5 +1,6 @@
 package com.okx.trading.infrastructure.okx;
 
+import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,6 +9,7 @@ import io.reactivex.rxjava3.core.Single;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.ConnectionPool;
 import okhttp3.OkHttpClient;
+import retrofit2.Call;
 import retrofit2.HttpException;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory;
@@ -28,6 +30,8 @@ import com.okx.trading.infrastructure.okx.enumeration.ContractDirection;
 import com.okx.trading.infrastructure.okx.enumeration.InstrumentType;
 import com.okx.trading.infrastructure.okx.enumeration.TriggerCondition;
 import com.okx.trading.infrastructure.okx.interceptor.AuthenticationInterceptor;
+import retrofit2.http.GET;
+import retrofit2.http.Query;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -128,6 +132,13 @@ public class OkxApiService {
     public OkxRestResponse<Balance> getBalance(String ccy) {
         return execute(api.getBalance(ccy));
     }
+
+
+    //查看持仓信息 Get Positions
+    public JSONObject getPositions(String instType, String instId, String posId){
+        return execute(api.getPositions(instType,instId,posId));
+    }
+
 
     /**
      * 下单

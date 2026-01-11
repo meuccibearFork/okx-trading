@@ -87,7 +87,7 @@
         </filter>
     </appender>
 
-    <!--  高德地图日志  -->
+    <!--  wss日志  -->
     <appender name="WSS_MSG" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_PATH}/wss_message.log</file>
         <encoder>

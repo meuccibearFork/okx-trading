@@ -1,5 +1,6 @@
 package com.okx.trading;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson2.JSON;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -49,6 +50,12 @@ public class OkxServiceTest {
     @Test
     public void testGET() {
         OkxApiService service = getOkxService();
+        final var positions = service.getPositions(null,null,null);
+        JSONArray data = positions.getJSONArray("data");
+        for (int i = 0; i < data.size(); i++) {
+            log.info(data.getJSONObject(i).toJSONString());
+        }
+//        service.getGridAlgoOrderPositions(AlgoOrderType.GRID, "algoId");
         final var accountBalanceOkxRestResponse = service.getBalance("BTC");
         log.info("testGET: {}", JSON.toJSONString(accountBalanceOkxRestResponse));
     }

@@ -1,12 +1,13 @@
 # 使用Java 8作为基础镜像
-#FROM openjdk:8-jdk-alpine
+#FROM --platform=linux/amd64 openjdk:8-jdk-alpine
+#FROM openjdk:26-ea-21-jdk-oraclelinux8
 FROM zhuozhuang/java:1.8-glibc
 
 # 设置工作目录
 WORKDIR /app
 
 # 添加构建参数
-ARG JAR_FILE=target/*.jar
+ARG JAR_FILE=maven/*.jar
 ARG PROXY_HOST=localhost
 ARG PROXY_PORT=10809
 

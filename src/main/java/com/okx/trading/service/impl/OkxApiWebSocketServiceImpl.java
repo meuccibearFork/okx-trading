@@ -201,14 +201,14 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
 
                 if (candlestick != null) {
                     candlestick.setIntervalVal(interval);
-//                    redisCacheService.updateCandlestick(candlestick);
-//                    redisCacheService.updateCoinPrice(symbol, candlestick.getClose());
+                    redisCacheService.updateCandlestick(candlestick);
+                    redisCacheService.updateCoinPrice(symbol, candlestick.getClose());
 
                     // 更新邮件通知服务的最新价格
                     emailNotificationService.updateLatestPrice(symbol, candlestick.getClose());
 
                     log.debug("获取实时标记价格k线数据: {}", candlestick);
-//                    candlesticks.add(candlestick);
+                    candlesticks.add(candlestick);
 
                     // 通知实时策略管理器处理新的K线数据
                     if (realTimeStrategyManager != null) {
@@ -975,6 +975,8 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
         long timestamp = Long.parseLong(candleData.getString(0));
         LocalDateTime time = LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.of("UTC+8"));
         candlestick.setOpenTime(time);
+
+//        openTime open high low close volume volCcy quoteVolume state
 
         candlestick.setOpen(BigDecimalUtil.safeGen(candleData.getString(1)));
         candlestick.setHigh(BigDecimalUtil.safeGen(candleData.getString(2)));

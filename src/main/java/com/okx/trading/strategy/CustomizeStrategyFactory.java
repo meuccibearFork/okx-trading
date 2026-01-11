@@ -1,26 +1,14 @@
 package com.okx.trading.strategy;
 
 import com.alibaba.fastjson2.JSON;
-import com.okx.trading.model.TimeSlice;
 import com.okx.trading.util.Ta4jNumUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.jfree.data.time.TimeSeries;
 import org.ta4j.core.*;
 import org.ta4j.core.indicators.*;
-import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.*;
-import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
-import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.*;
-
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-
-
-import static com.okx.trading.strategy.StrategyRegisterCenter.addExtraStopRule;
 
 /**
  * 自定义-策略工厂 - 高级策略集合
