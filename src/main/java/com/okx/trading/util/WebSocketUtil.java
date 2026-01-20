@@ -649,7 +649,7 @@ public class WebSocketUtil {
                 return;
             }
 
-            log.info("<message.{}>: {}", reconnectType, message);
+            //log.info("<message.{}>: {}", reconnectType, message);
 
             // 根据消息类型路由到相应的处理器
             String topic = null;

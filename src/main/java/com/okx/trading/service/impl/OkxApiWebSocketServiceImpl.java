@@ -181,6 +181,7 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
             String interval = channel.replaceAll("candle", "");
             // 构建缓存键 - 确保与getKlineData和unsubscribeKlineData方法使用相同的键格式
             String key = channel + "_" + symbol + "_" + interval;
+            //log.info("handleKlineMessage: channel_symbol_interval:{} arg:{}", key, JSON.toJSONString(arg));
 
             // 获取数据并解析
             List<Candlestick> candlesticks = new ArrayList<>();

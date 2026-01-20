@@ -113,7 +113,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
         if (runningStrategies.isEmpty()) {
             return;
         }
-        log.info("handleNewKlineData symbol:{} interval:{} candlestick:{}", symbol, interval, candlestick);
+        //log.info("handleNewKlineData symbol:{} interval:{} candlestick:{}", symbol, interval, candlestick);
         runningStrategies.entrySet().stream()
                 .filter(entry -> {
                     RealTimeStrategyEntity state = entry.getValue();
@@ -148,6 +148,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
 
         //同一策略同周期内不能重复交易，买、卖只能触发一次，防止短时间都满足多次交易的情况
         synchronized (state) {
+            //log.info("触发策略~~~");
             // 控制同一个周期内只能交易一次
             boolean forbiddenTradeTime = false;
             boolean signalOfSamePeriod = false;
@@ -169,9 +170,14 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                     return;
                 }
             }
-
             // 检查交易信号
             int currentIndex = series.getEndIndex();
+            Strategy strategy = CustomizeStrategyFactory.yjwStrategy(series);
+
+            boolean entryRule = strategy.shouldEnter(currentIndex);
+            boolean exitRule = strategy.shouldExit(currentIndex);
+            log.info("CustomizeStrategyFactory: currentIndex:{} entryRule:{} exitRule:{}", currentIndex, entryRule, exitRule);
+
             boolean shouldBuy = state.getStrategy().shouldEnter(currentIndex);
             boolean shouldSell = state.getStrategy().shouldExit(currentIndex);
 
@@ -254,16 +260,27 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                 }
             }
 
-            Order order = tradeController.createFuturesOrder(
+            Order order = tradeController.createSpotOrder(
                     state.getSymbol(),
                     null,
                     side,
                     null,
                     preQuantity,
                     preAmount,
-                    null, null, null, 10,
-                    false, false
+                    null, null, null, null,
+                    false, state.getId()
             ).getData();
+
+//            Order order = tradeController.createFuturesOrder(
+//                    state.getSymbol(),
+//                    null,
+//                    side,
+//                    null,
+//                    preQuantity,
+//                    preAmount,
+//                    null, null, null, 10,
+//                    false, false
+//            ).getData();
 
             if (order != null) {
                 // 保存订单记录
@@ -454,6 +471,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
 
     /**
      * 开始执行实时战略
+     *
      * @param strategyEntity 策略信息
      */
     public Map<String, Object> startExecuteRealTimeStrategy(RealTimeStrategyEntity strategyEntity) {

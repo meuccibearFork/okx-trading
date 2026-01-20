@@ -39,6 +39,7 @@ public class OkxUtils {
     public Map<String, String> buildHeaders(String timestamp, String method, String requestPath, String body, boolean isSimulated) {
         Map<String, String> headers = new HashMap<>();
 
+        log.info("Build apiKey: {}", okxApiConfig.getApiKey());
         headers.put("OK-ACCESS-KEY", okxApiConfig.getApiKey());
         headers.put("OK-ACCESS-SIGN", SignatureUtil.sign(timestamp, method, requestPath, body, okxApiConfig.getSecretKey()));
         headers.put("OK-ACCESS-TIMESTAMP", timestamp);

@@ -1,3 +1,6 @@
+
+truncate table strategy_info;
+
 -- 初始化策略信息表数据
 
 -- 使用INSERT IGNORE语法避免插入重复数据

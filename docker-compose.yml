@@ -1,22 +1,30 @@
-version: '3.8'
+version: '3.2'
 
 services:
+  app-vue:
+    image: ${PROJECT_IMAGES_PATH}
+    container_name: ${PROJECT_IMAGES_NAME}-app-vue
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    restart: always
+
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: okx-trading-app
+    image: ${PROJECT_API_IMAGES_PATH}
+    container_name: ${PROJECT_IMAGES_NAME}-app
     restart: unless-stopped
     ports:
       - "8088:8088"
     environment:
       - MYSQL_USERNAME=root
       - MYSQL_PASSWORD=Password123?
-      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/okx_trading?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false
-      - SPRING_REDIS_HOST=host.docker.internal
+      - SPRING_DATASOURCE_URL=jdbc:mysql://118.107.26.215:3306/okx_trading?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false
+      - SPRING_REDIS_HOST=118.107.26.215
       - SPRING_REDIS_PORT=6379
       - JAVA_OPTS=-Xmx1g -Xms512m
       - OKX_API_KEY=${OKX_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - OKX_SECRET_KEY=${OKX_SECRET_KEY:-}
       - OKX_PASSPHRASE=${OKX_PASSPHRASE:-}
       - PROXY_ENABLED=${PROXY_ENABLED:-false}
@@ -26,6 +34,23 @@ services:
       - ./logs:/app/logs
     networks:
       - okx-network
+
+  portainer:
+    container_name: portainer
+    image: portainer/portainer:latest
+    privileged: true
+    restart: always
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - ./cache/portainer:/data:rw
+    labels:
+      - "general.enable=true"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
 
 # 已注释MySQL和Redis服务，使用本地服务
   mysql:
@@ -66,3 +91,5 @@ networks:
 volumes:
   mysql-data:
   redis-data:
+
+# 152.32.253.209:9000

@@ -30,10 +30,10 @@ public class SignatureUtil {
     public static String getIsoTimestamp() {
         // OKX API要求的时间戳格式为：yyyy-MM-dd'T'HH:mm:ss.SSSZ
         // 例如：2023-01-09T08:15:39.924Z
-        
+
         // 获取当前UTC时间的毫秒时间戳
         Instant now = Instant.now();
-        
+
         // 使用DateTimeFormatter确保生成精确的毫秒格式
         return DateTimeFormatter
                 .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
@@ -44,14 +44,15 @@ public class SignatureUtil {
     /**
      * 生成签名
      *
-     * @param timestamp ISO格式的时间戳
-     * @param method    HTTP请求方法，如GET、POST
+     * @param timestamp   ISO格式的时间戳
+     * @param method      HTTP请求方法，如GET、POST
      * @param requestPath API请求路径
-     * @param body      请求体，对于GET请求为空字符串
-     * @param secretKey 密钥
+     * @param body        请求体，对于GET请求为空字符串
+     * @param secretKey   密钥
      * @return 计算得到的签名
      */
     public static String sign(String timestamp, String method, String requestPath, String body, String secretKey) {
+        logger.info("Signing request timestamp: {} method:{} requestPath:{} body:{} secretKey:{}", timestamp, method, requestPath, body, secretKey);
         try {
             String preHash = timestamp + method.toUpperCase() + requestPath + (body == null ? "" : body);
             byte[] secretKeyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
@@ -65,4 +66,4 @@ public class SignatureUtil {
             throw new RuntimeException("签名计算异常", e);
         }
     }
-} 
+}

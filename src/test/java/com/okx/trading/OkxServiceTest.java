@@ -1,11 +1,15 @@
 package com.okx.trading;
 
-import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.TypeReference;
 import com.alibaba.fastjson2.JSON;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.okx.trading.dto.InstType;
+import com.okx.trading.dto.PositionDetail;
+import com.okx.trading.dto.PositionsResponse;
 import com.okx.trading.infrastructure.okx.OkxApiService;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -21,6 +25,10 @@ import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static com.okx.trading.infrastructure.okx.OkxApiService.buildApi;
 import static com.okx.trading.infrastructure.okx.OkxApiService.defaultClient;
@@ -48,13 +56,12 @@ public class OkxServiceTest {
     }
 
     @Test
-    public void testGET() {
+    public void testGET() throws Exception {
         OkxApiService service = getOkxService();
         final var positions = service.getPositions(null,null,null);
-        JSONArray data = positions.getJSONArray("data");
-        for (int i = 0; i < data.size(); i++) {
-            log.info(data.getJSONObject(i).toJSONString());
-        }
+        PositionsResponse positionsResponse = JSONObject.parseObject(positions.toJSONString(), new TypeReference<PositionsResponse>() {});
+        positionsResponse.printEnhancedPositions();
+
 //        service.getGridAlgoOrderPositions(AlgoOrderType.GRID, "algoId");
         final var accountBalanceOkxRestResponse = service.getBalance("BTC");
         log.info("testGET: {}", JSON.toJSONString(accountBalanceOkxRestResponse));

@@ -41,18 +41,21 @@ public class OkxTradingApplication {
         String port = env.getProperty("server.port");
         String contextPath = env.getProperty("server.servlet.context-path", "");
 
-        log.info("\n----------------------------------------------------------\n" +
-                        "应用 '{}' 已成功启动! 访问URL:\n" +
-                        "本地: \thttp://localhost:{}{}\n" +
-                        "外部: \thttp://{}:{}{}\n" +
-                        "swagger: http://localhost:8088/api/swagger-ui\n" +
-                        "----------------------------------------------------------",
+        log.info("""
+                        
+                        ----------------------------------------------------------
+                        应用 '{}' 已成功启动! 访问URL:
+                        本地: \thttp://localhost:{}{}
+                        外部: \thttp://{}:{}{}
+                        swagger: http://localhost:8088/api/swagger-ui
+                        mock: {}
+                        ----------------------------------------------------------""",
                 env.getProperty("spring.application.name", "okx-trading"),
                 port,
                 contextPath,
                 "127.0.0.1",
                 port,
-                contextPath);
+                contextPath, env.getProperty("okx.api.use-mock-data"));
     }
 
     /**

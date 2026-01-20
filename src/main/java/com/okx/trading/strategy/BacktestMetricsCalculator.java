@@ -7,6 +7,7 @@ import com.okx.trading.service.IndicatorDistributionService;
 import com.okx.trading.service.IndicatorWeightService;
 import com.okx.trading.service.impl.Ta4jBacktestService;
 import com.okx.trading.util.SpringContextUtil;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
@@ -124,7 +125,12 @@ import static com.okx.trading.util.BacktestDataGenerator.parseIntervalToMinutes;
 @Slf4j
 public class BacktestMetricsCalculator {
 
+    /**
+     * -- GETTER --
+     *  获取计算结果
+     */
     // 计算结果
+    @Getter
     private BacktestResultDTO result;
 
     // 输入参数
@@ -1075,13 +1081,6 @@ public class BacktestMetricsCalculator {
         }
     }
 
-    /**
-     * 获取计算结果
-     */
-    public BacktestResultDTO getResult() {
-        return result;
-    }
-
     // ====================== 新增风险指标计算方法 ======================
 
     /**
@@ -1873,7 +1872,7 @@ public class BacktestMetricsCalculator {
                         expectedFinalAmount.setScale(4, RoundingMode.HALF_UP), actualFinalAmount.setScale(4, RoundingMode.HALF_UP));
                 // 修正最终金额
                 equityCurve.set(equityCurve.size() - 1, expectedFinalAmount);
-            } 
+            }
         }
 
         return equityCurve;

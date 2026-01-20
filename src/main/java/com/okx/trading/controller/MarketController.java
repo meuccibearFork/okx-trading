@@ -350,7 +350,7 @@ public class MarketController {
             @RequestParam(required = false, defaultValue = "all") String filter,
             @RequestParam(required = false) String search,
             @RequestParam(required = false, defaultValue = "50") Integer limit) {
-        log.info("获取所有币种最新行情, filter: {}, search: {}, limit: {}", filter, search, limit);
+        log.info("获取所有币种最新行情, filter: {}, search: {}, limit: {} okxApiServiceClass:{}", filter, search, limit, okxApiService.getClass().getName());
 
         List<Ticker> tickers = null;
         Set<Object> members = redisTemplate.opsForSet().members(ALL_COIN_RT_PRICE);

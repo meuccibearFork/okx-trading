@@ -1,0 +1,45 @@
+server:
+  port: 8088
+  shutdown: graceful # web 优雅停机
+  servlet:
+    context-path: ''
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  profiles:
+    active: dev
+  main:
+    allow-circular-references: true
+  application:
+    name: okx-trading
+#  servlet:
+#    multipart:
+#      max-file-size: 10MB
+#      max-request-size: 20MB
+
+
+  # spring admin client
+#  boot:
+#    admin:
+#      client:
+#        instance:
+#          service-host-type: ip
+#          name: riderclient
+#  jackson:
+#    time-zone: GMT+8
+
+management:
+  wavefront:
+    application:
+      name: okx-trading
+      service-name: getting-started
+#  endpoints:
+#    web:
+#      exposure:
+#        include: '*'
+#  endpoint:
+#    health:
+#      show-details: always

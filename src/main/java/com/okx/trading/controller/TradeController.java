@@ -133,7 +133,7 @@ public class TradeController {
     @PostMapping("/futures-orders")
     public ApiResponse<Order> createFuturesOrder(
             @NotBlank(message = "交易对不能为空") @RequestParam String symbol,
-            @NotBlank(message = "订单类型不能为空") @RequestParam String type,
+            @RequestParam String type,
             @NotBlank(message = "交易方向不能为空") @RequestParam String side,
             @RequestParam(required = false) BigDecimal price,
             @RequestParam(required = false) @DecimalMin(value = "0.00000001", message = "数量必须大于0") BigDecimal quantity,
