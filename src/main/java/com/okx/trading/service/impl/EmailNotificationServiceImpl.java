@@ -68,7 +68,7 @@ public class EmailNotificationServiceImpl implements NotificationService {
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
 
-    private static final String SYMBOL = "BTC-USDT";
+    private static final String SYMBOL = "MEME-USDT";
     private static final int MAX_UNCHANGED_COUNT = 3;
     private final Queue<String> priceQueue = new LinkedList<>();
     private String lastPrice = null;

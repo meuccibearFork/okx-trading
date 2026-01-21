@@ -45,7 +45,7 @@ public class OkxServiceTest {
         log.info("apiKey:{} passphrase:{} secretKey:{}", apiKey, passphrase, secretKey);
 
         Duration defaultTimeout = Duration.ofSeconds(30);
-        boolean simulated = true;
+        boolean simulated = false;
         Proxy proxy = new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1", 7890));
         OkHttpClient client = defaultClient(apiKey, secretKey, passphrase, simulated, defaultTimeout)
                 .newBuilder()
@@ -58,13 +58,15 @@ public class OkxServiceTest {
     @Test
     public void testGET() throws Exception {
         OkxApiService service = getOkxService();
-        final var positions = service.getPositions(null,null,null);
-        PositionsResponse positionsResponse = JSONObject.parseObject(positions.toJSONString(), new TypeReference<PositionsResponse>() {});
-        positionsResponse.printEnhancedPositions();
-
-//        service.getGridAlgoOrderPositions(AlgoOrderType.GRID, "algoId");
-        final var accountBalanceOkxRestResponse = service.getBalance("BTC");
-        log.info("testGET: {}", JSON.toJSONString(accountBalanceOkxRestResponse));
+        log.info("testGET{}", JSON.toJSONString(service.getBalance("USDT")));
+//        final var positions = service.getPositions(null, null, null);
+//        PositionsResponse positionsResponse = JSONObject.parseObject(positions.toJSONString(), new TypeReference<PositionsResponse>() {
+//        });
+//        positionsResponse.printEnhancedPositions();
+//
+////        service.getGridAlgoOrderPositions(AlgoOrderType.GRID, "algoId");
+//        final var accountBalanceOkxRestResponse = service.getBalance("BTC");
+//        log.info("testGET: {}", JSON.toJSONString(accountBalanceOkxRestResponse));
     }
 
     /**
@@ -90,7 +92,7 @@ public class OkxServiceTest {
     }
 
     /**
-     *  网格策略智能回测
+     * 网格策略智能回测
      */
     @Test
     public void getAiParam() {
