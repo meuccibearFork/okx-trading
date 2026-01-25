@@ -4,6 +4,7 @@ import com.okx.trading.model.entity.RealTimeOrderEntity;
 import com.okx.trading.model.trade.Order;
 import com.okx.trading.repository.RealTimeOrderRepository;
 import com.okx.trading.service.RealTimeOrderService;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,7 +21,7 @@ import java.util.List;
 @Service
 public class RealTimeOrderServiceImpl implements RealTimeOrderService {
 
-    @Autowired
+    @Resource
     private RealTimeOrderRepository realTimeOrderRepository;
 
     @Override

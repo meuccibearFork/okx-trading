@@ -2,10 +2,8 @@ package com.okx.trading.strategy;
 
 import com.okx.trading.config.BacktestParameterConfig;
 import com.okx.trading.config.BeanHolder;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
@@ -190,7 +188,7 @@ public class StrategyRegisterCenter {
         strategyCreators.put(STRATEGY_HT_SINE, StrategyFactory1::createHtSineStrategy);
         strategyCreators.put(STRATEGY_HT_TRENDMODE, StrategyFactory1::createHtTrendmodeStrategy);
         strategyCreators.put(STRATEGY_MSW, StrategyFactory1::createMswStrategy);
-        strategyCreators.put(STRATEGY_CUSTOMIZE, CustomizeStrategyFactory::createMultiLevelTakeProfitStopLossStrategy);
+        //strategyCreators.put(STRATEGY_CUSTOMIZE, series -> CustomizeStrategyFactory.yjwStrategy(series, strategyBuilder));
 
         // 集成AdvancedStrategyFactory的50个新策略
         // 注册所有高级策略创建函数

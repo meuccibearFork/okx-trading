@@ -36,7 +36,7 @@ public class AvgIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    protected Num calculate(int index) {
+    public Num calculate(int index) {
         Num h = high.getValue(index);
         Num l = low.getValue(index);
         Num c = close.getValue(index);

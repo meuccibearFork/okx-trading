@@ -4,6 +4,7 @@ import com.okx.trading.model.entity.StrategyConversationEntity;
 import com.okx.trading.repository.StrategyConversationRepository;
 import com.okx.trading.service.StrategyConversationService;
 import io.netty.util.internal.StringUtil;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +20,7 @@ import java.util.List;
 @Service
 public class StrategyConversationServiceImpl implements StrategyConversationService {
 
-    @Autowired
+    @Resource
     private StrategyConversationRepository strategyConversationRepository;
 
     @Override

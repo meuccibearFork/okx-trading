@@ -4,6 +4,7 @@ import com.okx.trading.model.entity.BacktestSummaryEntity;
 import com.okx.trading.model.entity.BacktestTradeEntity;
 import com.okx.trading.repository.BacktestSummaryRepository;
 import com.okx.trading.repository.BacktestTradeRepository;
+import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,10 +27,10 @@ public class BacktestResultExporter {
     private static final Logger log = LoggerFactory.getLogger(BacktestResultExporter.class);
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    @Autowired
+    @Resource
     private BacktestSummaryRepository backtestSummaryRepository;
 
-    @Autowired
+    @Resource
     private BacktestTradeRepository backtestTradeRepository;
 
     /**

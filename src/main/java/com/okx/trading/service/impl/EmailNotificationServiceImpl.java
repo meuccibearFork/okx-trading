@@ -11,6 +11,7 @@ import com.okx.trading.service.RealTimeStrategyService;
 import com.okx.trading.strategy.RealTimeStrategyManager;
 import com.okx.trading.util.WebSocketUtil;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,28 +45,28 @@ import java.util.stream.Stream;
 @ConditionalOnProperty(name = "notification.type", havingValue = "email")
 public class EmailNotificationServiceImpl implements NotificationService {
 
-    @Autowired
+    @Resource
     private JavaMailSender mailSender;
 
-    @Autowired
+    @Resource
     private NotificationConfig notificationConfig;
 
-    @Autowired
+    @Resource
     RedisTemplate<String, Object> redisTemplate;
 
-    @Autowired
+    @Resource
     @Lazy
     private OkxApiService okxApiService;
 
-    @Autowired
+    @Resource
     @Lazy
     private RealTimeStrategyManager realTimeStrategyManager;
 
-    @Autowired
+    @Resource
     @Lazy
     private RealTimeStrategyService realTimeStrategyService;
 
-    @Autowired
+    @Resource
     private ApplicationEventPublisher applicationEventPublisher;
 
     private static final String SYMBOL = "MEME-USDT";
@@ -96,7 +97,7 @@ public class EmailNotificationServiceImpl implements NotificationService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
 
-    @Autowired
+    @Resource
     private WebSocketUtil webSocketUtil;
 
     public EmailNotificationServiceImpl(RealTimeStrategyManager realTimeStrategyManager) {

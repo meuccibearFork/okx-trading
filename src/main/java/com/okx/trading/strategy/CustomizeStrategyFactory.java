@@ -3,11 +3,17 @@ package com.okx.trading.strategy;
 import com.alibaba.fastjson2.JSON;
 import com.okx.trading.util.Ta4jNumUtil;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.ta4j.core.*;
-import org.ta4j.core.indicators.*;
+import org.ta4j.core.indicators.ATRIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.helpers.*;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.OpenPriceIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.*;
 
@@ -16,6 +22,7 @@ import org.ta4j.core.rules.*;
  */
 @Slf4j
 public class CustomizeStrategyFactory {
+
 
     public static Strategy yjwStrategy(BarSeries series, String htf, double triggerPoints, double trailOffsetIn, int trailPointsIn) {
         // 获取更高时间框架的数据
@@ -80,11 +87,13 @@ public class CustomizeStrategyFactory {
         // 获取更高时间框架的数据
         AvgIndicator bop = new AvgIndicator(new OpenPriceIndicator(series), new HighPriceIndicator(series), new LowPriceIndicator(series), new ClosePriceIndicator(series), series);
 
+        @Getter
+        @Setter
         class EntryRule implements Rule {
             private AvgIndicator bop;
 
             public EntryRule(AvgIndicator bop) {
-                this.bop = bop;
+                setBop(bop);
             }
 
             /**
@@ -111,11 +120,13 @@ public class CustomizeStrategyFactory {
             }
         }
 
+        @Getter
+        @Setter
         class ExitRule implements Rule {
             private AvgIndicator bop;
 
             public ExitRule(AvgIndicator bop) {
-                this.bop = bop;
+                setBop(bop);
             }
 
             /**

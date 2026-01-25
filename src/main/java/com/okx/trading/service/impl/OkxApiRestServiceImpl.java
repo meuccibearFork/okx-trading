@@ -3,6 +3,10 @@ package com.okx.trading.service.impl;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.okex.open.api.bean.trade.param.AttachAlgoOrds;
+import com.okex.open.api.bean.trade.param.PlaceOrder;
+import com.okex.open.api.service.marketData.MarketDataAPIService;
+import com.okex.open.api.service.trade.TradeAPIService;
 import com.okx.trading.config.OkxApiConfig;
 import com.okx.trading.exception.OkxApiException;
 import com.okx.trading.model.account.AccountBalance;
@@ -16,12 +20,15 @@ import com.okx.trading.util.BigDecimalUtil;
 import com.okx.trading.util.HttpUtil;
 import com.okx.trading.util.OkxUtils;
 import com.okx.trading.util.SignatureUtil;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import retrofit2.Call;
+import retrofit2.http.Query;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -52,6 +59,12 @@ public class OkxApiRestServiceImpl implements OkxApiService {
     private static final String ACCOUNT_PATH = API_PATH + "/account";
     private static final String TRADE_PATH = API_PATH + "/trade";
 
+    @Resource
+    MarketDataAPIService marketDataAPIService;
+
+    @Resource
+    TradeAPIService tradeAPIService;
+
     /**
      * 获取K线数据
      *
@@ -63,14 +76,7 @@ public class OkxApiRestServiceImpl implements OkxApiService {
     @Override
     public List<Candlestick> getKlineData(String symbol, String interval, Integer limit) {
         try {
-            String url = okxApiConfig.getBaseUrl() + MARKET_PATH + "/candles";
-            url = url + "?instId=" + symbol + "&bar=" + interval;
-            if (limit != null && limit > 0) {
-                url = url + "&limit=" + limit;
-            }
-
-            String response = HttpUtil.get(okHttpClient, url, null);
-            JSONObject jsonResponse = JSON.parseObject(response);
+            JSONObject jsonResponse = marketDataAPIService.getCandlesticks(symbol, null, null, interval, String.valueOf(limit));
 
             if (!"0".equals(jsonResponse.getString("code"))) {
                 throw new OkxApiException(jsonResponse.getIntValue("code"), jsonResponse.getString("msg"));
@@ -417,60 +423,86 @@ public class OkxApiRestServiceImpl implements OkxApiService {
             String url = okxApiConfig.getBaseUrl() + TRADE_PATH + "/order";
             // 按金额下单,按数量下单,限价单,市价单
 
-            JSONObject requestBody = new JSONObject();
-            requestBody.put("instId", orderRequest.getSymbol());
-            requestBody.put("tdMode", "cash"); // 资金模式，cash为现钞
-            requestBody.put("side", orderRequest.getSide().toLowerCase());
+            PlaceOrder placeOrder = new PlaceOrder();
+            placeOrder.setInstId(orderRequest.getSymbol());
+            placeOrder.setTdMode("cash");// 资金模式，cash为现钞 cross
+            placeOrder.setSide(orderRequest.getSide().toLowerCase());
             if (orderRequest.getType() != null) {
-                requestBody.put("ordType", mapToOkxOrderType(orderRequest.getType()));
+                placeOrder.setOrdType(mapToOkxOrderType(orderRequest.getType()));
             } else {
-                requestBody.put("ordType", "market");
+                placeOrder.setOrdType("market");
             }
+
             // 处理市价单和限价单逻辑
             //币币市价单委托数量sz的单位,base_ccy: 交易货币 ；quote_ccy：计价货币,仅适用于币币市价订单,默认买单为quote_ccy，卖单为base_ccy
             if (orderRequest.getAmount() != null) {
                 // 市价\限价,指定金额
-                requestBody.put("sz", orderRequest.getAmount().toString());
-                requestBody.put("tgtCcy", "quote_ccy");
+                placeOrder.setSz(orderRequest.getAmount().toString());
+                placeOrder.setTgtCcy("quote_ccy");
             } else if (orderRequest.getQuantity() != null) {
                 //指定数量,市价单不指定价格,限价单指定价格
-                requestBody.put("sz", orderRequest.getQuantity().toString());
-                requestBody.put("tgtCcy", "base_ccy");
+                placeOrder.setSz(orderRequest.getQuantity().toString());
+                placeOrder.setTgtCcy("base_ccy");
                 if (orderRequest.getPrice() != null) {
-                    requestBody.put("px", orderRequest.getPrice().toString());
+                    placeOrder.setPx(orderRequest.getPrice().toString());
                 } else {
                     BigDecimal coinPrice = redisCacheService.getCoinPrice(orderRequest.getSymbol());
-                    requestBody.put("px", coinPrice.toString());
+                    placeOrder.setPx(coinPrice.toString());
                 }
             }
+
             if (orderRequest.getClientOrderId() != null) {
-                requestBody.put("clOrdId", orderRequest.getClientOrderId());
+                placeOrder.setClOrdId(orderRequest.getClientOrderId());
             }
 
             // 设置杠杆倍数（合约交易）
             if ("SWAP".equals(instType) && orderRequest.getLeverage() != null) {
-                requestBody.put("lever", orderRequest.getLeverage().toString());
+                placeOrder.setLever(orderRequest.getLeverage().toString());
             }
 
-            // 设置订单有效期
+//            // 设置订单有效期
 //            if (orderRequest.getTimeInForce() != null) {
-//                requestBody.put("tgtCcy", mapToOkxTimeInForce(orderRequest.getTimeInForce()));
+//                placeOrder.setTgtCcy(mapToOkxTimeInForce(orderRequest.getTimeInForce()));
 //            }
-
 //            // 设置被动委托
-//            if(orderRequest.getPostOnly() != null && orderRequest.getPostOnly()){
-//                requestBody.put("postOnly", "1");
+//            if (orderRequest.getPostOnly() != null && orderRequest.getPostOnly()) {
+//                placeOrder.setPostOnly("1");
 //            }
 
-            String requestBodyStr = requestBody.toJSONString();
-            String timestamp = SignatureUtil.getIsoTimestamp();
-            String method = "POST";
-            String requestPath = TRADE_PATH + "/order";
+//        placeOrder.setCcy("USDT");
+            placeOrder.setClOrdId("0423a3a06···");
+//        placeOrder.setTag("");
+            placeOrder.setPosSide("long");
+            placeOrder.setSz("1");
+            placeOrder.setQuickMgnType("");
 
-            Map<String, String> headers = okxUtils.buildHeaders(timestamp, method, requestPath, requestBodyStr, isSimulated);
+            placeOrder.setPx("110000");
+//        placeOrder.setReduceOnly(false);
+//        placeOrder.setTgtCcy("");
+//        placeOrder.setBanAmend(false);
+            //止盈止损参数
+            ArrayList<AttachAlgoOrds> list = new ArrayList<>();
+            AttachAlgoOrds attachAlgoOrds = new AttachAlgoOrds();
+            attachAlgoOrds.setAttachAlgoClOrdId("");
+            attachAlgoOrds.setTpTriggerPxType("");
+            attachAlgoOrds.setTpOrdPx("150000");
+            attachAlgoOrds.setTpTriggerPx("150000");
+            attachAlgoOrds.setSlTriggerPxType("");
+            attachAlgoOrds.setSlOrdPx("100000");
+            attachAlgoOrds.setSlTriggerPx("100000");
+            attachAlgoOrds.setSz("");
+            attachAlgoOrds.setAmendPxOnTriggerType("");
+            attachAlgoOrds.setTpOrdKind("");
+            list.add(attachAlgoOrds);
+            placeOrder.setAttachAlgoOrds(list);
+            //自成交保护
+        /*placeOrder.setStpId("");
+        placeOrder.setStpMode("");*/
+            //仅适用于期权
+        /*placeOrder.setPxUsd("");
+        placeOrder.setPxVol("");*/
 
-            String response = HttpUtil.post(okHttpClient, url, headers, requestBodyStr);
-            JSONObject jsonResponse = JSON.parseObject(response);
+            JSONObject jsonResponse = tradeAPIService.placeOrder(placeOrder);
 
             if (!"0".equals(jsonResponse.getString("code"))) {
                 JSONArray data = jsonResponse.getJSONArray("data");

@@ -1,6 +1,7 @@
 package com.okx.trading.strategy;
 
 import com.alibaba.fastjson.JSON;
+import com.okx.trading.constant.CommonConfig;
 import com.okx.trading.model.market.Candlestick;
 import com.okx.trading.model.trade.Order;
 import com.okx.trading.model.entity.RealTimeOrderEntity;
@@ -10,6 +11,7 @@ import com.okx.trading.repository.RealTimeStrategyRepository;
 import com.okx.trading.service.*;
 import com.okx.trading.controller.TradeController;
 import com.okx.trading.service.impl.OkxApiWebSocketServiceImpl;
+import com.okx.trading.strategy.cust.CustomizeStrategyFactory;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -20,7 +22,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.ta4j.core.*;
@@ -31,10 +32,8 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import static com.okx.trading.constant.IndicatorInfo.*;
 
@@ -65,11 +64,11 @@ public class RealTimeStrategyManager implements ApplicationRunner {
     private final StrategyInfoService strategyInfoService;
     private final RealTimeStrategyRepository realTimeStrategyRepository;
     private final int kLineNum = 100;
+    private final CustomizeStrategyFactory customizeStrategyFactory;
     private boolean loadedStrategies = false;
     private final NotificationService notificationService;
     private ExecutorService executorService;
     private RedisTemplate redisTemplate;
-
 
     public RealTimeStrategyManager(@Lazy OkxApiWebSocketServiceImpl webSocketService,
                                    RealTimeOrderService realTimeOrderService,
@@ -78,7 +77,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                                    @Lazy RealTimeStrategyService realTimeStrategyService,
                                    CandlestickBarSeriesConverter barSeriesConverter,
                                    StrategyInfoService strategyInfoService,
-                                   RealTimeStrategyRepository realTimeStrategyRepository,
+                                   RealTimeStrategyRepository realTimeStrategyRepository, CustomizeStrategyFactory customizeStrategyFactory,
                                    NotificationService notificationService,
                                    @Qualifier("executeTradeScheduler") ExecutorService executorService,
                                    RedisTemplate redisTemplate) {
@@ -91,6 +90,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
         this.barSeriesConverter = barSeriesConverter;
         this.strategyInfoService = strategyInfoService;
         this.realTimeStrategyRepository = realTimeStrategyRepository;
+        this.customizeStrategyFactory = customizeStrategyFactory;
         this.notificationService = notificationService;
         this.executorService = executorService;
         this.redisTemplate = redisTemplate;
@@ -121,8 +121,9 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                 })
                 .forEach(entry -> {
                     RealTimeStrategyEntity state = entry.getValue();
+
                     try {
-                        if (state.getStrategy() != null) {
+                        if (state.getStrategy() != null || CommonConfig.isNotBuild(state.getInterval())) {
                             processStrategySignal(state, candlestick);
                         }
                     } catch (Exception e) {
@@ -130,6 +131,10 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                     }
                 });
     }
+
+
+    private TradingRecord tradingRecord;
+
 
     /**
      * 处理策略信号
@@ -172,25 +177,28 @@ public class RealTimeStrategyManager implements ApplicationRunner {
             }
             // 检查交易信号
             int currentIndex = series.getEndIndex();
-            Strategy strategy = CustomizeStrategyFactory.yjwStrategy(series);
+            if (CommonConfig.isNotBuild(state.getInterval())) {
+                Strategy strategy = customizeStrategyFactory.yjwStrategy(series);
+//                if (strategy != null) {
+//                    boolean shouldBuy = strategy.shouldEnter(currentIndex);
+//                    boolean shouldSell = strategy.shouldExit(currentIndex);
+//                }
+            } else {
+                boolean shouldBuy = state.getStrategy().shouldEnter(currentIndex);
+                boolean shouldSell = state.getStrategy().shouldExit(currentIndex);
 
-            boolean entryRule = strategy.shouldEnter(currentIndex);
-            boolean exitRule = strategy.shouldExit(currentIndex);
-            log.info("CustomizeStrategyFactory: currentIndex:{} entryRule:{} exitRule:{}", currentIndex, entryRule, exitRule);
+                // 处理买入信号 - 只有在上一次不是买入时才触发
+                if (shouldBuy && (StringUtils.isBlank(state.getLastTradeType()) || SELL.equals(state.getLastTradeType()))) {
+                    executeTradeSignal(state, candlestick, BUY);
+                }
 
-            boolean shouldBuy = state.getStrategy().shouldEnter(currentIndex);
-            boolean shouldSell = state.getStrategy().shouldExit(currentIndex);
-
-
-            // 处理买入信号 - 只有在上一次不是买入时才触发
-            if (shouldBuy && (StringUtils.isBlank(state.getLastTradeType()) || SELL.equals(state.getLastTradeType()))) {
-                executeTradeSignal(state, candlestick, BUY);
+                // 处理卖出信号 - 只有在上一次是买入时才触发
+                if (shouldSell && BUY.equals(state.getLastTradeType())) {
+                    executeTradeSignal(state, candlestick, SELL);
+                }
             }
 
-            // 处理卖出信号 - 只有在上一次是买入时才触发
-            if (shouldSell && BUY.equals(state.getLastTradeType())) {
-                executeTradeSignal(state, candlestick, SELL);
-            }
+
         }
     }
 
@@ -508,13 +516,16 @@ public class RealTimeStrategyManager implements ApplicationRunner {
         }
 
         // 根据strategyEntity创建具体的Strategy实例
-        Strategy ta4jStrategy;
+
         try {
-            ta4jStrategy = StrategyRegisterCenter.
-                    createStrategy(runningBarSeries.get(strategyEntity.getSymbol() + "_" + strategyEntity.getInterval()), strategyEntity.getStrategyCode());
-            log.info("<strategyEntity>: {}", JSON.toJSONString(strategyEntity));
             strategyEntity = realTimeStrategyRepository.save(strategyEntity);
-            strategyEntity.setStrategy(ta4jStrategy);
+            if (!CommonConfig.isNotBuild(strategyEntity.getInterval())) {
+                Strategy ta4jStrategy = StrategyRegisterCenter.
+                        createStrategy(runningBarSeries.get(strategyEntity.getSymbol() + "_" + strategyEntity.getInterval()), strategyEntity.getStrategyCode());
+                log.info("<strategyEntity>: {}", JSON.toJSONString(strategyEntity));
+                strategyEntity.setStrategy(ta4jStrategy);
+            }
+
         } catch (Exception e) {
             log.error("获取策略失败: {}", e.getMessage(), e);
             response.put("message", "获取策略失败");

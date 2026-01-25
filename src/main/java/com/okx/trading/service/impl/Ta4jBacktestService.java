@@ -20,6 +20,7 @@ import com.okx.trading.model.entity.CandlestickEntity;
 import com.okx.trading.strategy.BacktestMetricsCalculator;
 import com.okx.trading.strategy.StrategyRegisterCenter;
 import com.okx.trading.adapter.CandlestickBarSeriesConverter;
+import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +48,7 @@ public class Ta4jBacktestService {
     private static final URL LOGBACK_CONF_FILE = StrategyExecutionLogging.class.getClassLoader()
             .getResource("logback-traces.xml");
 
-    @Autowired
+    @Resource
     private CandlestickBarSeriesConverter barSeriesConverter;
 
     /**

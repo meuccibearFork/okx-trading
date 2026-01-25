@@ -3,10 +3,6 @@ package com.okx.trading.service.impl;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.okex.open.api.bean.trade.param.AttachAlgoOrds;
-import com.okex.open.api.bean.trade.param.PlaceOrder;
-import com.okex.open.api.service.marketData.MarketDataAPIService;
-import com.okex.open.api.service.trade.TradeAPIService;
 import com.okx.trading.config.OkxApiConfig;
 import com.okx.trading.exception.OkxApiException;
 import com.okx.trading.model.account.AccountBalance;
@@ -16,13 +12,18 @@ import com.okx.trading.model.market.Candlestick;
 import com.okx.trading.model.market.Ticker;
 import com.okx.trading.model.trade.Order;
 import com.okx.trading.model.trade.OrderRequest;
-import com.okx.trading.service.*;
+import com.okx.trading.service.KlineCacheService;
+import com.okx.trading.service.NotificationService;
+import com.okx.trading.service.OkxApiService;
+import com.okx.trading.service.RedisCacheService;
 import com.okx.trading.strategy.RealTimeStrategyManager;
 import com.okx.trading.util.*;
-import jakarta.annotation.Resource;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -30,30 +31,26 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
-
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
-
-import okhttp3.Request;
-import okhttp3.Response;
 
 import static com.okx.trading.constant.IndicatorInfo.BALANCE;
 import static com.okx.trading.service.impl.OkxApiRestServiceImpl.MARKET_PATH;
-
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 
 /**
@@ -69,7 +66,7 @@ import java.util.Date;
         havingValue = "WEBSOCKET",
         matchIfMissing = true
 )
-public class OkxApiWebSocketServiceImpl implements OkxApiService {
+public class OkxApiWebSocketServiceImpl_bak implements OkxApiService {
 
     private final OkxApiConfig okxApiConfig;
     private final WebSocketUtil webSocketUtil;
@@ -82,7 +79,7 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
     private final RealTimeStrategyServiceImpl realTimeStrategyService;
 
     @Lazy
-    @Autowired(required = false)
+    @Resource(required = false)
     private RealTimeStrategyManager realTimeStrategyManager;
 
     @Resource
@@ -299,7 +296,7 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
 
                 // 将余额信息转换为Map并存入Redis
                 if (accountBalance.getAssetBalances() != null) {
-                    for (AccountBalance.AssetBalance assetBalance : accountBalance.getAssetBalances()) {
+                    for (AssetBalance assetBalance : accountBalance.getAssetBalances()) {
                         redisTemplate.opsForHash().put(BALANCE, assetBalance.getAsset(), assetBalance.getAvailable().toString());
                         redisTemplate.expire(BALANCE, 10, TimeUnit.MINUTES);
                     }
@@ -1520,12 +1517,12 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
             // 使用REST API获取所有SPOT交易对的行情数据
             String url = okxApiConfig.getBaseUrl() + "/api/v5/market/tickers?instType=SPOT";
 
-            okhttp3.Request request = new okhttp3.Request.Builder()
+            Request request = new Request.Builder()
                     .url(url)
                     .get()
                     .build();
 
-            okhttp3.Response response = okHttpClient.newCall(request).execute();
+            Response response = okHttpClient.newCall(request).execute();
             String responseBody = response.body() != null ? response.body().string() : null;
 
             if (responseBody == null) {

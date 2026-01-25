@@ -9,6 +9,7 @@ import com.okx.trading.repository.CandlestickRepository;
 import com.okx.trading.service.HistoricalDataService;
 import com.okx.trading.service.OkxApiService;
 import com.okx.trading.service.RedisCacheService;
+import jakarta.annotation.Resource;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -55,10 +56,10 @@ public class HistoricalDataServiceImpl implements HistoricalDataService {
 
     @Value("${okx.historical-data.max-threads:10}")
     private int maxThreads = 10;
-    @Autowired
+    @Resource
     private RedisTemplate<String, Object> redisTemplate;
 
-    @Autowired
+    @Resource
     private RedisCacheService redisCacheService;
 
     private final CandlestickBarSeriesConverter barSeriesConverter;

@@ -1,6 +1,7 @@
 package com.okx.trading.config;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Resource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +29,7 @@ public class BacktestParameterConfig {
     private static final BigDecimal DEFAULT_STOP_LOSS_PERCENT = new BigDecimal("0.05");
     private static final BigDecimal DEFAULT_TRAILING_PROFIT_PERCENT = new BigDecimal("0.05");
 
-    @Autowired
+    @Resource
     private RedisTemplate<String, String> redisTemplate;
 
     // 当前参数值

@@ -1,8 +1,10 @@
 package com.okx.trading.dto;
 
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSON;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,6 +43,7 @@ public class PositionsResponse extends ApiResponse<PositionDetail> {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+
     /**
      * 增强的持仓信息打印方法
      */
@@ -65,10 +68,14 @@ public class PositionsResponse extends ApiResponse<PositionDetail> {
         Map<InstType, List<PositionDetail>> grouped = positions.stream()
                 .collect(Collectors.groupingBy(PositionDetail::getInstType));
 
+
         for (Map.Entry<InstType, List<PositionDetail>> entry : grouped.entrySet()) {
             System.out.printf("%n【%s】%n", entry.getKey().getDescription());
-
             for (PositionDetail pos : entry.getValue()) {
+                BigDecimal totalProfit = BigDecimal.ZERO;
+                BigDecimal totalMargin = BigDecimal.ZERO;
+                BigDecimal multiply = pos.getUpl().divide(pos.getMargin(), 8, RoundingMode.HALF_UP).multiply(new BigDecimal("100"));
+                System.out.println("多持仓总盈亏百分比: " + multiply.setScale(4, RoundingMode.HALF_UP).toString() + "%");
                 String uplColor = pos.getUpl().compareTo(BigDecimal.ZERO) >= 0 ? "\u001B[32m" : "\u001B[31m";
                 System.out.printf("  %-20s %-6s 数量:%-10s 均价:%-10s %s盈亏:%-10s\u001B[0m%n",
                         pos.getInstId(),
