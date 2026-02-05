@@ -422,17 +422,21 @@ public class OkxApiRestServiceImpl implements OkxApiService {
         try {
             String url = okxApiConfig.getBaseUrl() + TRADE_PATH + "/order";
             // 按金额下单,按数量下单,限价单,市价单
-
             PlaceOrder placeOrder = new PlaceOrder();
             placeOrder.setInstId(orderRequest.getSymbol());
-            placeOrder.setTdMode("cash");// 资金模式，cash为现钞 cross
+
+            //交易模式
+            //保证金模式：isolated：逐仓 ；cross：全仓
+            //非保证金模式：cash：非保证金
+            //spot_isolated：现货逐仓(仅适用于现货带单) ，现货带单时，tdMode 的值需要指定为spot_isolated
+            //注意：isolated 在跨币种保证金模式和组合保证金模式下不可用。
+            placeOrder.setTdMode("isolated");
             placeOrder.setSide(orderRequest.getSide().toLowerCase());
             if (orderRequest.getType() != null) {
                 placeOrder.setOrdType(mapToOkxOrderType(orderRequest.getType()));
             } else {
                 placeOrder.setOrdType("market");
             }
-
             // 处理市价单和限价单逻辑
             //币币市价单委托数量sz的单位,base_ccy: 交易货币 ；quote_ccy：计价货币,仅适用于币币市价订单,默认买单为quote_ccy，卖单为base_ccy
             if (orderRequest.getAmount() != null) {
@@ -457,6 +461,7 @@ public class OkxApiRestServiceImpl implements OkxApiService {
 
             // 设置杠杆倍数（合约交易）
             if ("SWAP".equals(instType) && orderRequest.getLeverage() != null) {
+                placeOrder.setPosSide(orderRequest.getPosSide());
                 placeOrder.setLever(orderRequest.getLeverage().toString());
             }
 
@@ -469,44 +474,11 @@ public class OkxApiRestServiceImpl implements OkxApiService {
 //                placeOrder.setPostOnly("1");
 //            }
 
-//        placeOrder.setCcy("USDT");
-            placeOrder.setClOrdId("0423a3a06···");
-//        placeOrder.setTag("");
-            placeOrder.setPosSide("long");
-            placeOrder.setSz("1");
-            placeOrder.setQuickMgnType("");
-
-            placeOrder.setPx("110000");
-//        placeOrder.setReduceOnly(false);
-//        placeOrder.setTgtCcy("");
-//        placeOrder.setBanAmend(false);
-            //止盈止损参数
-            ArrayList<AttachAlgoOrds> list = new ArrayList<>();
-            AttachAlgoOrds attachAlgoOrds = new AttachAlgoOrds();
-            attachAlgoOrds.setAttachAlgoClOrdId("");
-            attachAlgoOrds.setTpTriggerPxType("");
-            attachAlgoOrds.setTpOrdPx("150000");
-            attachAlgoOrds.setTpTriggerPx("150000");
-            attachAlgoOrds.setSlTriggerPxType("");
-            attachAlgoOrds.setSlOrdPx("100000");
-            attachAlgoOrds.setSlTriggerPx("100000");
-            attachAlgoOrds.setSz("");
-            attachAlgoOrds.setAmendPxOnTriggerType("");
-            attachAlgoOrds.setTpOrdKind("");
-            list.add(attachAlgoOrds);
-            placeOrder.setAttachAlgoOrds(list);
-            //自成交保护
-        /*placeOrder.setStpId("");
-        placeOrder.setStpMode("");*/
-            //仅适用于期权
-        /*placeOrder.setPxUsd("");
-        placeOrder.setPxVol("");*/
-
             JSONObject jsonResponse = tradeAPIService.placeOrder(placeOrder);
 
             if (!"0".equals(jsonResponse.getString("code"))) {
                 JSONArray data = jsonResponse.getJSONArray("data");
-                if (data.size() > 0) {
+                if (!data.isEmpty()) {
                     JSONObject msg = data.getJSONObject(0);
                     throw new OkxApiException(msg.getIntValue("sCode"), String.format("创建订单失败: %s", msg.getString("sMsg")));
                 }

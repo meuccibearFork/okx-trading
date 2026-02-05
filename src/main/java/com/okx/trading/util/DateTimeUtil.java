@@ -1,13 +1,41 @@
 package com.okx.trading.util;
 
+import cn.hutool.core.date.DateUtil;
+
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 
 /**
  * 日期时间工具类
  * 用于处理Java 8到Java 21之间的日期时间API差异
  */
 public class DateTimeUtil {
+
+    /**
+     * 判断两个时间是否大于指定分钟数
+     * @param date1 时间1
+     * @param date2 时间2
+     * @param minutes 分钟数
+     * @param includeEqual 是否包含等于的情况
+     * @return 是否大于（或大于等于）指定分钟数
+     */
+    public static boolean isGreaterThanMinutes(Date date1, Date date2,
+                                               int minutes, boolean includeEqual) {
+        if (date1 == null || date2 == null) {
+            return false;
+        }
+
+        long betweenMs = DateUtil.betweenMs(date1, date2);
+        long absMs = Math.abs(betweenMs);
+        long thresholdMs = minutes * 60L * 1000L;  // 转换为毫秒
+
+        if (includeEqual) {
+            return absMs >= thresholdMs;
+        } else {
+            return absMs > thresholdMs;
+        }
+    }
 
     /**
      * 将Instant转换为LocalDateTime
@@ -89,4 +117,4 @@ public class DateTimeUtil {
     public static ZoneId getSystemDefaultZoneId() {
         return ZoneId.of("UTC+8");
     }
-} 
+}

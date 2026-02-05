@@ -143,7 +143,9 @@ public class TradeController {
             @RequestParam(required = false) String clientOrderId,
             @RequestParam(required = false) Integer leverage,
             @RequestParam(required = false) Boolean postOnly,
-            @RequestParam(required = false) Boolean simulated) {
+            @RequestParam(required = false) Boolean simulated,
+            @RequestParam(required = false) Long startegyId,
+            @RequestParam(required = false) String posSide) {
 
         log.info("创建合约订单, symbol: {}, type: {}, side: {}, price: {}, quantity: {}, amount: {}, buyRatio: {}, sellRatio: {}, clientOrderId: {}, leverage: {}, postOnly: {}, simulated: {}",
                 symbol, type, side, price, quantity, amount, buyRatio, sellRatio, clientOrderId, leverage, postOnly, simulated);
@@ -162,6 +164,8 @@ public class TradeController {
                 .leverage(leverage)
                 .timeInForce("")
                 .simulated(simulated)
+                .strategyId(startegyId)
+                .posSide(posSide)
                 .build();
 
         Order order = okxApiService.createFuturesOrder(orderRequest);

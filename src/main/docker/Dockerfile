@@ -1,11 +1,12 @@
 # 使用Java 8作为基础镜像
-FROM --platform=linux/amd64 eclipse-temurin:21-jdk
+FROM --platform=linux/amd64 eclipse-temurin:21-jre
 #FROM --platform=linux/amd64 openjdk:21-jdk-slim
 
 # 设置工作目录
 WORKDIR /app
 
-# 添加构建参数
+# 添加构建参数clear
+
 #ARG JAR_FILE=maven/*.jar
 ARG JAR_FILE=maven/${project.build.finalName}.jar
 ARG PROXY_HOST=localhost

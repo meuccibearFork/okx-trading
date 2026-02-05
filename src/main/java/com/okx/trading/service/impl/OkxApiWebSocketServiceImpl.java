@@ -201,21 +201,18 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
                 JSONArray candleData = (JSONArray) item;
                 candlestick = parseCandlestick(candleData, symbol, channel);
 
-                if (candlestick != null) {
-                    candlestick.setIntervalVal(interval);
-                    redisCacheService.updateCandlestick(candlestick);
-                    redisCacheService.updateCoinPrice(symbol, candlestick.getClose());
+                candlestick.setIntervalVal(interval);
+                redisCacheService.updateCandlestick(candlestick);
+                redisCacheService.updateCoinPrice(symbol, candlestick.getClose());
 
-                    // 更新邮件通知服务的最新价格
-                    emailNotificationService.updateLatestPrice(symbol, candlestick.getClose());
+                // 更新邮件通知服务的最新价格
+                emailNotificationService.updateLatestPrice(symbol, candlestick.getClose());
 
-                    log.info("获取实时标记价格k线数据: {} {}", candlestick.getState(),candlestick);
-                    candlesticks.add(candlestick);
+                candlesticks.add(candlestick);
 
-                    // 通知实时策略管理器处理新的K线数据
-                    if (realTimeStrategyManager != null) {
-                        realTimeStrategyManager.handleNewKlineData(symbol, interval, candlestick);
-                    }
+                // 通知实时策略管理器处理新的K线数据
+                if (realTimeStrategyManager != null) {
+                    realTimeStrategyManager.handleNewKlineData(symbol, interval, candlestick);
                 }
             }
             // 如果解析到了数据，完成等待中的Future
@@ -288,6 +285,7 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
      * 处理账户消息
      */
     private void handleAccountMessage(JSONObject message) {
+        log.debug("handleAccountMessage: {}", message.toJSONString());
         try {
             if (!message.containsKey("data")) {
                 return;
@@ -701,8 +699,14 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
             requestMessage.put("op", "order");
 
             JSONObject arg = new JSONObject();
-            arg.put("instId", orderRequest.getSymbol());
-            arg.put("tdMode", "cash"); // 资金模式，cash为现钞
+
+            if ("SWAP".equals(instType)) {
+                arg.put("instId", orderRequest.getSymbol() + "-SWAP");
+                arg.put("tdMode", "isolated");
+            } else {
+                arg.put("instId", orderRequest.getSymbol());
+                arg.put("tdMode", "cash"); // 资金模式，cash为现钞
+            }
             arg.put("side", orderRequest.getSide().toLowerCase());
             if (orderRequest.getType() != null) {
                 arg.put("ordType", mapToOkxOrderType(orderRequest.getType())); // MARKET LIMIT
@@ -710,12 +714,11 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
                 arg.put("ordType", "market");
             }
 
-
             //币币市价单委托数量sz的单位,base_ccy: 交易货币 ；quote_ccy：计价货币,仅适用于币币市价订单,默认买单为quote_ccy，卖单为base_ccy
             if (orderRequest.getAmount() != null) {
                 // 市价\限价,指定金额
                 arg.put("sz", orderRequest.getAmount().toString());
-                arg.put("tgtCcy", "quote_ccy");
+//                arg.put("tgtCcy", "quote_ccy");
             } else if (orderRequest.getQuantity() != null) {
                 //指定数量,市价单不指定价格,限价单指定价格
                 arg.put("sz", orderRequest.getQuantity().toString());

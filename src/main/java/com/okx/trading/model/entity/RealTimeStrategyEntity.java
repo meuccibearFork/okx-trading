@@ -61,7 +61,6 @@ public class RealTimeStrategyEntity {
     @Column(name = "last_trade_amount")
     private Double lastTradeAmount = 0.0;
 
-
     /**
      * 最后交易价格
      */
@@ -192,6 +191,9 @@ public class RealTimeStrategyEntity {
         this.updateTime = LocalDateTime.now();
     }
 
+    public String getSymbolSwap(){
+        return symbol + "-SWAP";
+    }
 
     public RealTimeStrategyEntity(String strategyCode, String symbol, String interval, LocalDateTime startTime, Double tradeAmount, String strategyName) {
         this.strategyCode = strategyCode;

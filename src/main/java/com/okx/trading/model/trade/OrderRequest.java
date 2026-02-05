@@ -123,4 +123,6 @@ public class OrderRequest {
 
     @Schema(description = "所属策略id", example = "1", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Long strategyId;
+
+    String posSide;
 }

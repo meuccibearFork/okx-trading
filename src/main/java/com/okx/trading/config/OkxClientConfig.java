@@ -4,7 +4,11 @@ import com.okex.open.api.config.APIConfiguration;
 import com.okex.open.api.enums.I18nEnum;
 import com.okex.open.api.service.marketData.MarketDataAPIService;
 import com.okex.open.api.service.marketData.impl.MarketDataAPIServiceImpl;
+import com.okex.open.api.service.publicData.PublicDataAPIService;
+import com.okex.open.api.service.publicData.impl.PublicDataAPIServiceImpl;
 import com.okex.open.api.service.trade.TradeAPIService;
+import com.okex.open.api.service.trade.TradingService;
+import com.okex.open.api.service.trade.impl.OkxRealTradingService;
 import com.okex.open.api.service.trade.impl.TradeAPIServiceImpl;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Bean;
@@ -21,18 +25,45 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OkxClientConfig {
 
-
     @Resource
     OkxApiConfig okxApiConfig;
 
-
     private APIConfiguration config;
+
+    @Bean
+    public TradingService realTradingService(){
+        return new OkxRealTradingService(convertConfiguration());
+    }
+
+    /**
+     * 贸易API服务
+     */
+    @Bean
+    public TradeAPIService tradeAPIService(){
+        return new TradeAPIServiceImpl(convertConfiguration());
+    }
+
+    /**
+     * 市场数据
+     */
+    @Bean
+    public MarketDataAPIService marketDataAPIService() {
+        return new MarketDataAPIServiceImpl(convertConfiguration());
+    }
+
+    /**
+     * 公共数据
+     */
+    @Bean
+    public PublicDataAPIService publicDataAPIService() {
+        return new PublicDataAPIServiceImpl(convertConfiguration());
+    }
 
     /**
      * 转换配置
      * @return 配置项
      */
-    public APIConfiguration convertConfiguration(){
+    private APIConfiguration convertConfiguration(){
         if(config == null){
             config = new APIConfiguration();
 
@@ -55,21 +86,4 @@ public class OkxClientConfig {
 
         return config;
     }
-
-    /**
-     * 贸易API服务
-     */
-    @Bean
-    public TradeAPIService tradeAPIService(){
-        return new TradeAPIServiceImpl(convertConfiguration());
-    }
-
-    /**
-     * 市场数据
-     */
-    @Bean
-    public MarketDataAPIService marketDataAPIService() {
-        return new MarketDataAPIServiceImpl(convertConfiguration());
-    }
-
 }

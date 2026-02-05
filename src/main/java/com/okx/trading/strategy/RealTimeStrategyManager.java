@@ -1,12 +1,14 @@
 package com.okx.trading.strategy;
 
+import cn.hutool.core.date.BetweenFormatter;
+import cn.hutool.core.date.DateUtil;
 import com.alibaba.fastjson.JSON;
 import com.okx.trading.constant.CommonConfig;
-import com.okx.trading.model.market.Candlestick;
-import com.okx.trading.model.trade.Order;
 import com.okx.trading.model.entity.RealTimeOrderEntity;
+import com.okx.trading.model.market.Candlestick;
 import com.okx.trading.model.entity.RealTimeStrategyEntity;
 import com.okx.trading.adapter.CandlestickBarSeriesConverter;
+import com.okx.trading.model.trade.Order;
 import com.okx.trading.repository.RealTimeStrategyRepository;
 import com.okx.trading.service.*;
 import com.okx.trading.controller.TradeController;
@@ -36,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
 import static com.okx.trading.constant.IndicatorInfo.*;
+import static com.okx.trading.util.DateTimeUtil.isGreaterThanMinutes;
 
 
 /**
@@ -121,9 +124,8 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                 })
                 .forEach(entry -> {
                     RealTimeStrategyEntity state = entry.getValue();
-
                     try {
-                        if (state.getStrategy() != null || CommonConfig.isNotBuild(state.getInterval())) {
+                        if (state.getStrategy() != null || CommonConfig.isNotBuild(state.getStrategyCode())) {
                             processStrategySignal(state, candlestick);
                         }
                     } catch (Exception e) {
@@ -135,6 +137,10 @@ public class RealTimeStrategyManager implements ApplicationRunner {
 
     private TradingRecord tradingRecord;
 
+
+    // 上次时间
+    Date startTime;
+    Date lastTime;
 
     /**
      * 处理策略信号
@@ -153,7 +159,12 @@ public class RealTimeStrategyManager implements ApplicationRunner {
 
         //同一策略同周期内不能重复交易，买、卖只能触发一次，防止短时间都满足多次交易的情况
         synchronized (state) {
-            //log.info("触发策略~~~");
+//            startTime = new Date();
+//            if (lastTime != null ) {
+//                log.info("时间: {}", DateUtil.formatBetween(lastTime, new Date(), BetweenFormatter.Level.SECOND));
+//            }
+//            lastTime = startTime;
+
             // 控制同一个周期内只能交易一次
             boolean forbiddenTradeTime = false;
             boolean signalOfSamePeriod = false;
@@ -177,8 +188,8 @@ public class RealTimeStrategyManager implements ApplicationRunner {
             }
             // 检查交易信号
             int currentIndex = series.getEndIndex();
-            if (CommonConfig.isNotBuild(state.getInterval())) {
-                Strategy strategy = customizeStrategyFactory.yjwStrategy(series);
+            if (CommonConfig.isNotBuild(state.getStrategyCode())) {
+                Strategy strategy = customizeStrategyFactory.yjwStrategy(series, state, candlestick);
 //                if (strategy != null) {
 //                    boolean shouldBuy = strategy.shouldEnter(currentIndex);
 //                    boolean shouldSell = strategy.shouldExit(currentIndex);
@@ -197,8 +208,6 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                     executeTradeSignal(state, candlestick, SELL);
                 }
             }
-
-
         }
     }
 
@@ -228,10 +237,15 @@ public class RealTimeStrategyManager implements ApplicationRunner {
         return newPeriodStart.equals(lastPeriodStart);
     }
 
+
     /**
      * 执行交易信号
      */
     public void executeTradeSignal(RealTimeStrategyEntity state, Candlestick candlestick, String side) {
+        executeTradeSignal(state, candlestick, side, null);
+    }
+
+    public void executeTradeSignal(RealTimeStrategyEntity state, Candlestick candlestick, String side, String posSide) {
 //        CompletableFuture.runAsync(() -> {
         try {
 
@@ -268,27 +282,31 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                 }
             }
 
-            Order order = tradeController.createSpotOrder(
-                    state.getSymbol(),
-                    null,
-                    side,
-                    null,
-                    preQuantity,
-                    preAmount,
-                    null, null, null, null,
-                    false, state.getId()
-            ).getData();
-
-//            Order order = tradeController.createFuturesOrder(
-//                    state.getSymbol(),
-//                    null,
-//                    side,
-//                    null,
-//                    preQuantity,
-//                    preAmount,
-//                    null, null, null, 10,
-//                    false, false
-//            ).getData();
+            log.info("strategyCode: {}", state.getStrategyCode());
+            Order order;
+            if (CommonConfig.isNotBuild(state.getStrategyCode())) {
+                order = tradeController.createFuturesOrder(
+                        state.getSymbol(),
+                        null,
+                        side,
+                        null,
+                        preQuantity,
+                        preAmount,
+                        null, null, null, 3,
+                        false, false, state.getId(), posSide
+                ).getData();
+            } else {
+                order = tradeController.createSpotOrder(
+                        state.getSymbol(),
+                        null,
+                        side,
+                        null,
+                        preQuantity,
+                        preAmount,
+                        null, null, null, null,
+                        false, state.getId()
+                ).getData();
+            }
 
             if (order != null) {
                 // 保存订单记录
@@ -519,7 +537,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
 
         try {
             strategyEntity = realTimeStrategyRepository.save(strategyEntity);
-            if (!CommonConfig.isNotBuild(strategyEntity.getInterval())) {
+            if (!CommonConfig.isNotBuild(strategyEntity.getStrategyCode())) {
                 Strategy ta4jStrategy = StrategyRegisterCenter.
                         createStrategy(runningBarSeries.get(strategyEntity.getSymbol() + "_" + strategyEntity.getInterval()), strategyEntity.getStrategyCode());
                 log.info("<strategyEntity>: {}", JSON.toJSONString(strategyEntity));

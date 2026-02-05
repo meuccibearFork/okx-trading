@@ -9,12 +9,19 @@ import java.time.ZonedDateTime;
 
 @Data
 public class Position {
+
     private TradingSignal type;
+
     private Num entryPrice;
+
     private Num stopLoss;
+
     private Num highestPrice;
+
     private Num lowestPrice;
+
     private boolean trailingActivated = false;
+
     private ZonedDateTime entryTime;
 
     public Position(TradingSignal type, Num entryPrice, Num stopLoss) {

@@ -1,8 +1,10 @@
 package com.okx.trading;
 
 import com.alibaba.fastjson2.JSON;
+import com.okx.trading.controller.TradeController;
 import com.okx.trading.model.entity.CandlestickEntity;
 import com.okx.trading.service.HistoricalDataService;
+import com.okx.trading.service.OkxApiService;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,10 +13,25 @@ import java.util.List;
 
 @SpringBootTest
 class DemoApplicationTests {
-
-
     @Resource
     HistoricalDataService historicalDataService;
+
+    @Resource
+    TradeController okxApiService;
+
+    @Test
+    public void test() {
+//        okxApiService.createFuturesOrder(state.getSymbol(),
+//                null,
+//                side,
+//                null,
+//                preQuantity,
+//                preAmount,
+//                null, null, null, 10,
+//                false, false, state.getId());
+    }
+
+
 
     @Test
     void contextLoads() {
