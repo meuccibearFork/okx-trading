@@ -3,7 +3,9 @@ package com.okx.trading.account;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 import com.okex.open.api.bean.account.result.AccountInfo;
+import com.okex.open.api.bean.account.result.PositionDetail;
 import com.okex.open.api.bean.account.result.PositionInfo;
+import com.okex.open.api.bean.calculator.PositionCalculationResult;
 import com.okex.open.api.bean.result.TradeResponse;
 import com.okex.open.api.config.APIConfiguration;
 import com.okex.open.api.constant.MarginMode;
@@ -38,8 +40,8 @@ public class OkxTradingSystemTest extends BaseTests {
         log.info("当前模式: {}", tradingManager.isSimulator() ? "模拟交易" : "真实交易");
     }
 
-            String instrumentId = "BTC-USDT-SWAP";// 合约ID
-//    String instrumentId = "XRP-USDT-SWAP";
+//            String instrumentId = "BTC-USDT-SWAP";// 合约ID
+    String instrumentId = "XRP-USDT-SWAP";
 
     /**
      * 开多结果
@@ -125,6 +127,15 @@ public class OkxTradingSystemTest extends BaseTests {
     public void showPositions1() {
         final var positions = tradingManager.getPositions(instrumentId);
         positions.printEnhancedPositions();
+        System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+        PositionDetail positionDetail = positions.getPositionDetailOne(instrumentId);
+        PositionCalculationResult positionCalculationResult = positionDetail.calculateFromOKXData();
+        positionCalculationResult.printSummary();
+        // 检查止损
+        if (positionCalculationResult.getProfitPercentage().compareTo(BigDecimal.valueOf(2.0)) < 0) {
+            System.out.println("止损触发");
+        }
+
     }
 
     /**

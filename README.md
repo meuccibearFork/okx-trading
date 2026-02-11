@@ -420,3 +420,103 @@ mysql -u root -p okx_trading < src/main/resources/migration_add_risk_indicators.
 **OKX智能交易策略回测系统** - 让量化交易更智能，让策略开发更简单！
 
 [okx-v5-java](https://github.com/meuccibear/okx-v5-java)
+
+
+
+
+
+```json
+[
+  {
+      "instId": "MEME-USDT-SWAP",
+      "clOrdId": "1770221215878a626f393",
+      "side": "buy",
+      "sz": "0.01",
+      "tdMode": "isolated",
+    "tgtCcy": "quote_ccy",
+      "lever": "3",
+      "ordType": "market"
+  },
+  {
+      "clOrdId": "2019088000159453184",
+      "instId": "XRP-USDT-SWAP",
+      "side": "buy",
+    "posSide": "long",
+      "sz": "0.01",
+      "lever": "3",
+      "tdMode": "isolated",
+      "ordType": "market"
+  }
+]
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```java
+
+
+    /**
+     * 处理策略信号
+     * 真正执行实时策略逻辑，判断买卖信号的地方
+     */
+    private void processStrategySignal(RealTimeStrategyEntity state, Candlestick candlestick) {
+
+        // 更新BarSeries - 智能判断是更新还是添加新bar
+        Bar newBar = createBarFromCandlestick(candlestick);
+        BarSeries series = runningBarSeries.get(state.getSymbol() + "_" + state.getInterval());
+        boolean shouldReplace = shouldReplaceLastBar(series, newBar, state.getInterval());
+        series.addBar(newBar, shouldReplace);
+        if (!shouldReplace) {
+            series = series.getSubSeries(series.getBeginIndex() + 1, series.getEndIndex() + 1);
+        }
+
+        //同一策略同周期内不能重复交易，买、卖只能触发一次，防止短时间都满足多次交易的情况
+        synchronized (state) {
+            // 控制同一个周期内只能交易一次
+            boolean forbiddenTradeTime = false;
+            boolean signalOfSamePeriod = false;
+
+            long intervalSeconds = historicalDataService.getIntervalMinutes(candlestick.getIntervalVal()) * 60;
+            // 在每个周期的最后15秒判断信号是否触发，而不是在周期刚开始就触发了就执行交易
+            // 提到上面，无论是否策略的首次交易都要求在每个周期的最后15秒才触发交易
+            forbiddenTradeTime = Duration.between(candlestick.getOpenTime().plusSeconds(intervalSeconds), LocalDateTime.now()).abs().get(ChronoUnit.SECONDS) > 15;
+            if (forbiddenTradeTime) {
+                return;
+            }
+
+            if (state.getLastTradeTime() != null) {
+                LocalDateTime lastTradeTime = state.getLastTradeTime();
+                //同周期只触发一次交易信号
+                signalOfSamePeriod = lastTradeTime.isAfter(candlestick.getOpenTime()) && lastTradeTime.isBefore(candlestick.getOpenTime().plusSeconds(intervalSeconds));
+                // 如果是同一周期内的信号，不执行任何交易操作
+                if (signalOfSamePeriod) {
+                    return;
+                }
+            }
+            // 检查交易信号
+            int currentIndex = series.getEndIndex();
+            boolean shouldBuy = state.getStrategy().shouldEnter(currentIndex);
+            boolean shouldSell = state.getStrategy().shouldExit(currentIndex);
+  
+            // 处理买入信号 - 只有在上一次不是买入时才触发
+            if (shouldBuy && (StringUtils.isBlank(state.getLastTradeType()) || SELL.equals(state.getLastTradeType()))) {
+              executeTradeSignal(state, candlestick, BUY);
+            }
+  
+            // 处理卖出信号 - 只有在上一次是买入时才触发
+            if (shouldSell && BUY.equals(state.getLastTradeType())) {
+              executeTradeSignal(state, candlestick, SELL);
+            }
+        }
+    }
+```

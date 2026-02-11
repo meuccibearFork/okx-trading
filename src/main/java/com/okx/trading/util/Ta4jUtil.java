@@ -1,4 +1,4 @@
-package com.okx.trading.strategy.custv2.utils;
+package com.okx.trading.util;
 
 import org.ta4j.core.*;
 import org.ta4j.core.num.DecimalNum;

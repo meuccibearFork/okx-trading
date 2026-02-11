@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
 
 import java.time.LocalDateTime;
@@ -205,4 +206,7 @@ public class RealTimeStrategyEntity {
         this.lastSingalTime = LocalDateTime.now();
         this.lastTradeTime = LocalDateTime.now();
     }
+
+    BaseTradingRecord tradingRecord;
+
 }

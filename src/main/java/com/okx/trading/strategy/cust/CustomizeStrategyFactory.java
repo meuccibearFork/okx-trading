@@ -1,12 +1,16 @@
 package com.okx.trading.strategy.cust;
 
+import cn.hutool.core.util.ObjectUtil;
 import com.alibaba.fastjson.JSON;
 import com.okex.open.api.bean.account.result.PositionDetail;
+import com.okex.open.api.bean.calculator.PositionCalculationResult;
 import com.okex.open.api.service.trade.TradingService;
 import com.okx.trading.constant.TradingSignal;
 import com.okx.trading.constant.log.LoggerName;
 import com.okx.trading.model.entity.RealTimeStrategyEntity;
 import com.okx.trading.model.market.Candlestick;
+import com.okx.trading.strategy.DynamicStopLossTracker;
+import com.okx.trading.strategy.test.TradeStatistics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,11 +18,12 @@ import org.springframework.stereotype.Service;
 import org.ta4j.core.*;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
+
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import static com.okex.open.api.constant.OkxTradeType.*;
 
 /**
  * 自定义-策略工厂 - 高级策略集合
@@ -30,8 +35,7 @@ public class CustomizeStrategyFactory {
 
     private final TradingService tradingService;
 
-    // 策略参数
-    // 触发阈值
+    PositionDetail positionDetail;
 
     @Value("${strategy.yjw.tp:}")
     private double triggerPoints = 2.0;
@@ -58,6 +62,7 @@ public class CustomizeStrategyFactory {
             boolean isNewBar = !currentBar.getEndTime().equals(previousBar.getEndTime());
             log.info("<TEST>Current Bar: isNewBar:{} endIndex:{} currentBar:{} previousBar:{}", isNewBar, endIndex, currentBar, previousBar);
 
+
             if (isNewBar) {
                 // 计算信号
                 Signal signal = calculateSignal(currentBar, previousBar);
@@ -77,11 +82,7 @@ public class CustomizeStrategyFactory {
 
             // 记录指标
             recordMetrics(currentBar);
-            final var positions = tradingService.getPositions(state.getSymbolSwap());
-            positions.printEnhancedPositions();
-            positions.getData().forEach(PositionDetail::calculateFromOKXData);
 
-            log.info("<TEST>currentPosition: {} metrics: {}", JSON.toJSONString(currentPosition), JSON.toJSONString(metrics));
         } catch (Exception e) {
             log.error("处理K线数据失败", e);
         }
@@ -89,6 +90,77 @@ public class CustomizeStrategyFactory {
         return null;
     }
 
+    DynamicStopLossTracker tracker;
+
+    public void stopLoss(BarSeries barSeries, RealTimeStrategyEntity state, Candlestick candlestick) {
+        // 获取最新的Bar
+        int endIndex = barSeries.getEndIndex();
+        Bar currentBar = barSeries.getBar(endIndex);
+        Bar previousBar = barSeries.getBar(endIndex - 1);
+        if (positionDetail == null) {
+            final var positions = tradingService.getPositions(state.getSymbolSwap());
+            positionDetail = positions.getPositionDetailOne(state.getSymbolSwap());
+            // 使用Builder模式创建追踪器
+            tracker = DynamicStopLossTracker.builder()
+                    .entryPrice(positionDetail.getAvgPx())
+                    .initialStopLossPercent(BigDecimal.valueOf(-triggerPoints))
+                    .incrementPercent(BigDecimal.valueOf(triggerPoints))
+                    .build();
+        } else {
+            positionDetail.setMarkPx(currentBar.getClosePrice().bigDecimalValue());
+        }
+        PositionCalculationResult positionCalculationResult = positionDetail.calculateFromOKXData();
+
+        boolean adjusted = tracker.updatePrice(currentBar.getClosePrice().bigDecimalValue());
+
+        // 每次更新后显示状态
+        tracker.logStatus();
+
+        if (tracker.isStopLossTriggered()) {
+            log.info("\n⚠️ 止损已被触发！交易结束。");
+            //closePosition("止损触发", currentBar.getClosePrice(), state, candlestick);
+            // 显示调整历史
+            tracker.logAdjustmentHistory();
+
+            // 显示最终统计
+            TradeStatistics stats = tracker.getStatistics();
+            log.info("""
+                            
+                            ┌─────────────────────────────────────────────────────┐
+                            │                   最终统计                          │
+                            ├─────────────────────────────────────────────────────┤
+                            │ 最终状态: {}
+                            │ 入场价格: {}
+                            │ 最终价格: {}
+                            │ 最终收益率: {}%
+                            │ 最高收益率: {}%
+                            │ 总调整次数: {}
+                            │ 总运行时间: {}秒
+                            │ 最终盈亏比: {}
+                            └─────────────────────────────────────────────────────┘""",
+                    stats.getStatus().getDescription(),
+                    stats.getEntryPrice().setScale(2, RoundingMode.HALF_UP),
+                    stats.getCurrentPrice().setScale(2, RoundingMode.HALF_UP),
+                    stats.getCurrentReturn().setScale(2, RoundingMode.HALF_UP),
+                    stats.getMaxReturnAchieved().setScale(2, RoundingMode.HALF_UP),
+                    stats.getAdjustmentCount(),
+                    java.time.Duration.between(stats.getStartTime(), stats.getLastUpdateTime()).getSeconds(),
+                    stats.getRiskRewardRatio().setScale(2, RoundingMode.HALF_UP)
+            );
+        }
+
+        //profitPercentage
+        log.info("<TEST>进:{} 现:{} 益:{}  positionCalculationResult:{}", positionCalculationResult.getEntryPrice(), positionCalculationResult.getCurrentPrice(), positionCalculationResult.getProfitPercentage(), JSON.toJSONString(positionCalculationResult));
+
+        // 检查止损
+//        if (positionCalculationResult.getProfitPercentage().compareTo(BigDecimal.valueOf(triggerPoints)) < 0) {
+//
+//        }
+
+        if (ObjectUtil.isNotEmpty(metrics)) {
+            log.info("  <TEST>currentPosition: {} metrics: {} ", JSON.toJSONString(currentPosition), JSON.toJSONString(metrics));
+        }
+    }
 
     /**
      * 计算交易信号
@@ -128,11 +200,12 @@ public class CustomizeStrategyFactory {
      */
     private void openLongPosition(Bar currentBar, Bar previousBar, RealTimeStrategyEntity state, Candlestick candlestick) {
         Num entryPrice = currentBar.getClosePrice();
-        Num stopLoss = previousBar.getLowPrice();
+
+        Num stopLoss = DecimalNum.valueOf(entryPrice.bigDecimalValue().multiply(BigDecimal.valueOf(1 + triggerPoints / 100)));
 
         currentPosition = new Position(TradingSignal.LONG, entryPrice, stopLoss);
         log.info("<TEST>【开多仓】 入场价: {}, 止损价: {}, 时间: {} symbol:{}", entryPrice, stopLoss, currentBar.getEndTime(), state.getSymbolSwap());
-        tradingService.tradeByUsdtValue(state.getSymbol(), BUY_OPEN_LONG_ISOLATED, BigDecimal.valueOf(state.getTradeAmount()), "market", leverage);
+        //tradingService.tradeByUsdtValue(state.getSymbol(), BUY_OPEN_LONG_ISOLATED, BigDecimal.valueOf(state.getTradeAmount()), "market", leverage);
 
         metrics.put("lastAction", "OPEN_LONG");
         metrics.put("entryPrice", entryPrice.doubleValue());
@@ -144,11 +217,12 @@ public class CustomizeStrategyFactory {
      */
     private void openShortPosition(Bar currentBar, Bar previousBar, RealTimeStrategyEntity state, Candlestick candlestick) {
         Num entryPrice = currentBar.getClosePrice();
-        Num stopLoss = previousBar.getHighPrice();
+        Num stopLoss = DecimalNum.valueOf(entryPrice.bigDecimalValue().multiply(BigDecimal.valueOf(1 - triggerPoints / 100)));
+
         currentPosition = new Position(TradingSignal.SHORT, entryPrice, stopLoss);
         log.info("<TEST>【开空仓】 入场价: {}, 止损价: {}, 时间: {} symbol:{}",
                 entryPrice, stopLoss, currentBar.getEndTime(), state.getSymbolSwap());
-        tradingService.tradeByUsdtValue(state.getSymbolSwap(), SELL_OPEN_SHORT_ISOLATED, BigDecimal.valueOf(state.getTradeAmount()), "market", leverage);
+        //tradingService.tradeByUsdtValue(state.getSymbolSwap(), SELL_OPEN_SHORT_ISOLATED, BigDecimal.valueOf(state.getTradeAmount()), "market", leverage);
 
         metrics.put("lastAction", "OPEN_SHORT");
         metrics.put("entryPrice", entryPrice.doubleValue());
@@ -163,12 +237,6 @@ public class CustomizeStrategyFactory {
 
         Num currentPrice = currentBar.getClosePrice();
         Num profit = currentPosition.calculateProfit(currentPrice);
-
-        // 检查止损
-        if (checkStopLoss(currentPrice)) {
-            closePosition("止损触发", currentPrice, state, candlestick);
-            return;
-        }
 
         // 检查移动止盈
         if (!currentPosition.isTrailingActivated()) {
@@ -256,7 +324,6 @@ public class CustomizeStrategyFactory {
                 currentPosition.setLowestPrice(currentLow);
             }
         }
-
     }
 
     /**
@@ -273,7 +340,7 @@ public class CustomizeStrategyFactory {
                         currentPosition.getEntryTime(),
                         ZonedDateTime.now()
                 ).toMinutes() + "分钟");
-        tradingService.closePosition(state.getSymbolSwap(), "OPEN_SHORT".equals(metrics.get("lastAction")) ? BUY_CLOSE_SHORT_ISOLATED : SELL_CLOSE_LONG_ISOLATED);
+        //tradingService.closePosition(state.getSymbolSwap(), "OPEN_SHORT".equals(metrics.get("lastAction")) ? BUY_CLOSE_SHORT_ISOLATED : SELL_CLOSE_LONG_ISOLATED);
 
         metrics.put("lastAction", "CLOSE_POSITION");
         metrics.put("exitPrice", exitPrice.doubleValue());

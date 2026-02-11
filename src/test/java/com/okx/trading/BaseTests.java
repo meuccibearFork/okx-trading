@@ -33,10 +33,20 @@ public class BaseTests {
 //        config.setPassphrase("9WVku96XdasrC9u.");
 //        config.setXSimulatedTrading("0");
 
-        config.setApiKey("c2af6981-07ca-4dc1-8996-8ef4553a310f");
-        config.setSecretKey("9643C5511388B03F1BEF06115B709F30");
-        config.setPassphrase(".9WVku96XdasrC9u");
-        config.setXSimulatedTrading("1");
+
+
+//        OKX_API_KEY=af02b980-793b-4a6c-9bdd-09750daff54f
+//                OKX_PASSPHRASE=9WVku96XdasrC9u.
+//                OKX_SECRET_KEY=E132E77F7190192DD6B3D85882A72BCA
+        config.setApiKey("af02b980-793b-4a6c-9bdd-09750daff54f");
+        config.setSecretKey("E132E77F7190192DD6B3D85882A72BCA");
+        config.setPassphrase("9WVku96XdasrC9u.");
+        config.setXSimulatedTrading("0");
+
+//        config.setApiKey("c2af6981-07ca-4dc1-8996-8ef4553a310f");
+//        config.setSecretKey("9643C5511388B03F1BEF06115B709F30");
+//        config.setPassphrase(".9WVku96XdasrC9u");
+//        config.setXSimulatedTrading("1");
 
         //请求模拟盘的接口需要传入1，否则传入0
         //if you want to request the endpoint in demo trading,please input 1,otherwise,please input 0
