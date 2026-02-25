@@ -55,6 +55,7 @@ import static com.okx.trading.util.DateTimeUtil.isGreaterThanMinutes;
 @Component
 public class RealTimeStrategyManager implements ApplicationRunner {
 
+    private static final Logger strategyLogger = LoggerFactory.getLogger(LoggerName.WSS_STRATEGY_MSG);
     private static final Logger logger = LoggerFactory.getLogger(LoggerName.WSS_MSG);
 
     // 定义常量替代javax.print.attribute.standard.JobState.CANCELED
@@ -140,14 +141,14 @@ public class RealTimeStrategyManager implements ApplicationRunner {
 
     // 上次时间
     Date startTime;
-    Date lastTime;
+    LocalDateTime lastTime = LocalDateTime.now();
 
     /**
      * 处理策略信号
      * 真正执行实时策略逻辑，判断买卖信号的地方
      */
     private void processStrategySignal(RealTimeStrategyEntity state, Candlestick candlestick) {
-
+        strategyLogger.info("<LOG>processStrategySignal {}", JSON.toJSONString(candlestick));
         // 更新BarSeries - 智能判断是更新还是添加新bar
         Bar newBar = createBarFromCandlestick(candlestick);
         BarSeries series = runningBarSeries.get(state.getSymbol() + "_" + state.getInterval());
@@ -185,36 +186,8 @@ public class RealTimeStrategyManager implements ApplicationRunner {
             }
             // 检查交易信号
             int currentIndex = series.getEndIndex();
-            Strategy strategy = state.getStrategy();
-            TradingRecord tradingRecord = getTradingRecord(state);
             if (CommonConfig.isNotBuild(state.getStrategyCode())) {
                 customizeStrategyFactory.yjwStrategy(series, state, candlestick);
-//
-//                // 检查入场信号
-//                boolean shouldEnter = strategy.shouldEnter(currentIndex, tradingRecord);
-//                if (shouldEnter) {
-//                    // 获取当前持仓状态
-//                    boolean hasPosition = tradingRecord.getCurrentPosition().isOpened();
-//
-//                    if (!hasPosition) {
-//                        // 确定交易方向（这里需要根据策略具体信号确定）
-//                        String tradeType = determineTradeType(strategy, state, series, currentIndex);
-//                        if (tradeType != null) {
-//                            executeTradeSignal(state, candlestick, tradeType, "双周期平均策略");
-//                        }
-//                    }
-//                }
-//
-//                // 检查出场信号（由统一规则处理）
-//                boolean shouldExit = strategy.shouldExit(currentIndex, tradingRecord);
-//                if (shouldExit && tradingRecord.getCurrentPosition().isOpened()) {
-//                    // 获取当前持仓方向
-//                    Trade currentTrade = tradingRecord.getCurrentPosition().getEntry();
-//                    boolean isLong = currentTrade.getNetPrice() != null; // 简化判断
-//
-//                    String tradeType = isLong ? SELL : BUY;
-//                    executeTradeSignal(state, candlestick, tradeType, "统一止损规则");
-//                }
             } else {
                 boolean shouldBuy = state.getStrategy().shouldEnter(currentIndex);
                 boolean shouldSell = state.getStrategy().shouldExit(currentIndex);
@@ -333,7 +306,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                 }
             }
 
-            log.info("strategyCode: {}", state.getStrategyCode());
+            logger.info("strategyCode: {}", state.getStrategyCode());
             Order order;
             if (CommonConfig.isNotBuild(state.getStrategyCode())) {
                 order = tradeController.createFuturesOrder(
@@ -417,7 +390,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
 //                        LocalDateTime.now()).abs().getSeconds();
 //                redisTemplate.opsForValue().set(TRADE_FLAG + realTimeStrategy.getId(), String.valueOf(seconds), seconds, TimeUnit.SECONDS);
 
-                log.info("执行{}订单成功: symbol={}, price={}, amount={}, quantity={}", side, state.getSymbol(), state.getLastTradePrice(),
+                logger.info("执行{}订单成功: symbol={}, price={}, amount={}, quantity={}", side, state.getSymbol(), state.getLastTradePrice(),
                         state.getLastTradeAmount(), state.getLastTradeQuantity());
 
                 // 发送交易通知
@@ -486,30 +459,30 @@ public class RealTimeStrategyManager implements ApplicationRunner {
      */
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        log.info("程序启动，开始加载有效的实时策略...");
+        logger.info("程序启动，开始加载有效的实时策略...");
 
         try {
             // 获取运行中的状态
             List<RealTimeStrategyEntity> strategies = realTimeStrategyService.getStrategiesToAutoStart();
             if (strategies.isEmpty()) {
-                log.info("没有找到需要自动启动的策略");
+                logger.info("没有找到需要自动启动的策略");
                 loadedStrategies = true;
                 return;
             }
-            log.info("找到 {} 个需要自动启动的策略", strategies.size());
+            logger.info("找到 {} 个需要自动启动的策略", strategies.size());
 
             LocalDateTime now = LocalDateTime.now();
             for (RealTimeStrategyEntity strategyEntity : strategies) {
                 try {
-                    log.info("准备启动策略: strategyCode={}, symbol={}, interval={}",
+                    logger.info("准备启动策略: strategyCode={}, symbol={}, interval={}",
                             strategyEntity.getStrategyCode(), strategyEntity.getSymbol(), strategyEntity.getInterval());
 
                     Map<String, Object> response = startExecuteRealTimeStrategy(strategyEntity);
                     String status = (String) response.get("status");
                     if (status.equals(SUCCESS)) {
-                        log.info("策略启动成功: {}({})", strategyEntity.getStrategyName(), strategyEntity.getStrategyCode());
+                        logger.info("策略启动成功: {}({})", strategyEntity.getStrategyName(), strategyEntity.getStrategyCode());
                     } else {
-                        log.info("策略启动失败: {}({})", strategyEntity.getStrategyName(), strategyEntity.getStrategyCode());
+                        logger.info("策略启动失败: {}({})", strategyEntity.getStrategyName(), strategyEntity.getStrategyCode());
                     }
                 } catch (Exception e) {
                     log.error("启动策略失败: strategyCode={}, error={}",
@@ -517,7 +490,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                 }
             }
             loadedStrategies = true;
-            log.info("完成加载 {} 个需要自动启动的策略", strategies.size());
+            logger.info("完成加载 {} 个需要自动启动的策略", strategies.size());
 
         } catch (Exception e) {
             log.error("加载策略失败: {}", e.getMessage(), e);
@@ -591,7 +564,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
             if (!CommonConfig.isNotBuild(strategyEntity.getStrategyCode())) {
                 Strategy ta4jStrategy = StrategyRegisterCenter.
                         createStrategy(runningBarSeries.get(strategyEntity.getSymbol() + "_" + strategyEntity.getInterval()), strategyEntity.getStrategyCode());
-                log.info("<strategyEntity>: {}", JSON.toJSONString(strategyEntity));
+                logger.info("<strategyEntity>: {}", JSON.toJSONString(strategyEntity));
                 strategyEntity.setStrategy(ta4jStrategy);
             }
 
@@ -605,7 +578,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
         // 添加到运行中策略列表
         runningStrategies.put(strategyEntity.getId(), strategyEntity);
 
-        log.info("已添加策略: strategyCode={}, symbol={}, interval={}", strategyEntity.getStrategyCode(), strategyEntity.getSymbol(), strategyEntity.getInterval());
+        logger.info("已添加策略: strategyCode={}, symbol={}, interval={}", strategyEntity.getStrategyCode(), strategyEntity.getSymbol(), strategyEntity.getInterval());
         response.put("id", strategyEntity.getId());
         response.put("message", "实时回测已经开始执行");
         response.put("status", SUCCESS);

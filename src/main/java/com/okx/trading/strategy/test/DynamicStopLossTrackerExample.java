@@ -1,6 +1,7 @@
 package com.okx.trading.strategy.test;
 
-import com.okx.trading.strategy.DynamicStopLossTracker;
+import com.okex.open.api.bean.account.result.tracker.DynamicStopLossTracker;
+import com.okex.open.api.bean.account.result.tracker.TradeStatistics;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;

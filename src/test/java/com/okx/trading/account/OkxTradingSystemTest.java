@@ -5,8 +5,10 @@ import com.alibaba.fastjson.TypeReference;
 import com.okex.open.api.bean.account.result.AccountInfo;
 import com.okex.open.api.bean.account.result.PositionDetail;
 import com.okex.open.api.bean.account.result.PositionInfo;
+import com.okex.open.api.bean.account.result.tracker.DynamicStopLossTracker;
 import com.okex.open.api.bean.calculator.PositionCalculationResult;
 import com.okex.open.api.bean.result.TradeResponse;
+import com.okex.open.api.calculator.OKXProfitCalculator;
 import com.okex.open.api.config.APIConfiguration;
 import com.okex.open.api.constant.MarginMode;
 import com.okex.open.api.constant.OkxTradeType;
@@ -125,17 +127,25 @@ public class OkxTradingSystemTest extends BaseTests {
 
     @Test
     public void showPositions1() {
+        DynamicStopLossTracker tracker = DynamicStopLossTracker.builder()
+                .entryPrice(BigDecimal.valueOf(100))
+                .initialStopLossPercent(BigDecimal.valueOf(-1))
+                .incrementPercent(BigDecimal.valueOf(5))
+                .build();
+
         final var positions = tradingManager.getPositions(instrumentId);
         positions.printEnhancedPositions();
         System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
         PositionDetail positionDetail = positions.getPositionDetailOne(instrumentId);
-        PositionCalculationResult positionCalculationResult = positionDetail.calculateFromOKXData();
-        positionCalculationResult.printSummary();
-        // 检查止损
-        if (positionCalculationResult.getProfitPercentage().compareTo(BigDecimal.valueOf(2.0)) < 0) {
-            System.out.println("止损触发");
-        }
+        PositionCalculationResult positionCalculationResult = OKXProfitCalculator.calculateAll(tracker, positionDetail);
+        log.info(positionCalculationResult.printSummary());
 
+        // 每次更新后显示状态
+        tracker.logStatus();
+
+        if (tracker.isStopLossTriggered()) {
+            log.info("\n⚠️ 止损已被触发！交易结束。");
+        }
     }
 
     /**

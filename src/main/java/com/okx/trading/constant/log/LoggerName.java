@@ -10,6 +10,7 @@ import java.util.List;
 public class LoggerName {
 
     public static final String WSS_MSG = "wss.msg";
+    public static final String WSS_STRATEGY_MSG = "wss.strategy.msg";
 
     public static final List<String> LOG_NAME = Arrays.asList(
             WSS_MSG

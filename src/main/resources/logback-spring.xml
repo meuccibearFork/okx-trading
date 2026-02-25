@@ -105,6 +105,24 @@
         </rollingPolicy>
     </appender>
 
+    <!--  wss日志  -->
+    <appender name="WSS_STRATEGY_MSG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/wss_strategy_message.log</file>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <!-- 日志记录器的滚动策略，按日期，按大小记录 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/%d{yyyy-MM-dd}/wss_strategy_msg-%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <!--日志文件保留天数-->
+            <maxHistory>3</maxHistory>
+        </rollingPolicy>
+    </appender>
+
     <!-- OKX API相关日志 -->
     <logger name="com.okx.trading.service.impl.OkxMarketApiServiceImpl" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
@@ -172,6 +190,10 @@
 
     <logger name="wss.msg">
         <appender-ref ref="WSS_MSG"/>
+    </logger>
+
+    <logger name="wss.strategy.msg">
+        <appender-ref ref="WSS_STRATEGY_MSG"/>
     </logger>
 
     <!-- 根日志配置 -->
