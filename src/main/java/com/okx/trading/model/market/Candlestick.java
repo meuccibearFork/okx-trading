@@ -2,6 +2,7 @@ package com.okx.trading.model.market;
 
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.okx.trading.event.WebSocketReconnectEvent;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,7 +21,7 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Candlestick implements Comparable<Candlestick>{
+public class Candlestick implements Comparable<Candlestick> {
 
     private String channel;
     /**
@@ -38,6 +39,7 @@ public class Candlestick implements Comparable<Candlestick>{
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime openTime;
+    private long timestamp;
 
     /**
      * 开盘价
@@ -90,16 +92,19 @@ public class Candlestick implements Comparable<Candlestick>{
      */
     private int state;
 
-    private Map<String,Map<String,BigDecimal>> indecator;
+    private Map<String, Map<String, BigDecimal>> indecator;
+
+    WebSocketReconnectEvent.ReconnectType reconnectType;
 
     @Override
-    public String toString(){
-        return JSONObject.toJSONString(this);
+    public String toString() {
+        return String.format("%d %s(%s-%s) 开盘/收盘价:%.7f/%.7f 最高/最低价:%.7f/%.7f reconnectType:%s state:%d 成交量(计价货币/以币为单位/以张为单位):%.7f / %.7f / %.7f", timestamp, symbol, openTime, channel, open, close, high, low, reconnectType, state, quoteVolume, volCcy, volume);
+        //return JSONObject.toJSONString(this);
     }
 
 
     @Override
-    public int compareTo(@NotNull Candlestick o){
+    public int compareTo(@NotNull Candlestick o) {
         return this.getOpenTime().compareTo(o.getOpenTime());
     }
 

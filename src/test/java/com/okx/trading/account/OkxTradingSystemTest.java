@@ -73,10 +73,10 @@ public class OkxTradingSystemTest extends BaseTests {
     @Test
     public void openShortPosition() {
         System.out.print("请输入USDT金额: ");
-        BigDecimal amount = new BigDecimal(1);
+        BigDecimal amount = new BigDecimal("0.01");
 
         System.out.print("请输入杠杆倍数 (默认20): ");
-        Integer leverage = 20;
+        Integer leverage = 3;
 
         System.out.print("选择保证金模式 (1.全仓 2.逐仓): ");
         OkxTradeType tradeType = OkxTradeType.SELL_OPEN_SHORT_ISOLATED;//逐仓
@@ -98,8 +98,8 @@ public class OkxTradingSystemTest extends BaseTests {
     public void closePosition() {
         System.out.print("请输入平仓方向 (1.平多 2.平空): ");
 
-//        OkxTradeType tradeType = OkxTradeType.BUY_CLOSE_SHORT_ISOLATED;//平空
-        OkxTradeType tradeType = OkxTradeType.SELL_CLOSE_LONG_ISOLATED;//平多
+        OkxTradeType tradeType = OkxTradeType.BUY_CLOSE_SHORT_ISOLATED;//平空
+//        OkxTradeType tradeType = OkxTradeType.SELL_CLOSE_LONG_ISOLATED;//平多
 
         TradeResponse response = tradingManager.closePosition(instrumentId, tradeType);
         System.out.printf("平仓结果: %s\n", response.isSuccess() ? "成功" : "失败");

@@ -6,7 +6,6 @@ import com.okex.open.api.bean.account.result.tracker.DynamicStopLossTracker;
 import com.okex.open.api.bean.account.result.tracker.TradeStatistics;
 import com.okex.open.api.bean.calculator.PositionCalculationResult;
 import com.okex.open.api.calculator.OKXProfitCalculator;
-import com.okex.open.api.constant.PositionSide;
 import com.okex.open.api.service.trade.TradingService;
 import com.okx.trading.constant.log.LoggerName;
 import com.okx.trading.model.entity.RealTimeStrategyEntity;
@@ -21,8 +20,6 @@ import org.ta4j.core.num.Num;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-
-import static com.okex.open.api.constant.OkxTradeType.*;
 
 /**
  * 自定义-策略工厂 - 高级策略集合
@@ -55,7 +52,7 @@ public class CustomizeStrategyFactory {
 
             // 检查是否是新K线
             boolean isNewBar = !currentBar.getEndTime().equals(previousBar.getEndTime());
-            log.info("<TEST>Current Bar: isNewBar:{} endIndex:{} currentBar:{} previousBar:{}", isNewBar, endIndex, currentBar, previousBar);
+            strategyLogger.info("[数据]Current Bar: isNewBar:{} endIndex:{} currentBar:{} previousBar:{}", isNewBar, endIndex, currentBar, previousBar);
 
             if (isNewBar) {
                 // 计算信号
@@ -68,11 +65,15 @@ public class CustomizeStrategyFactory {
                         openLongPosition(currentBar, previousBar, state, candlestick);
                     } else if (signal.isShortSignal()) {
                         openShortPosition(currentBar, previousBar, state, candlestick);
+                    } else {
+                        strategyLogger.info("[数据][计算信号不出操作] 品种: {}, 时间: {}", state.getSymbolSwap(), currentBar.getEndTime());
                     }
                 }
             }
         } catch (Exception e) {
-            log.error("处理K线数据失败", e);
+            //2026-08-02 22:30:00.937 [OkHttp https://ws.okx.com:8443/...] INFO  wss.strategy.msg - [数据]K线数据 1785680940000 MEME-USDT-SWAP(2026-08-02T22:29-candle1m) 开盘/收盘价:0.00050530/0.00050530 最高/最低价:0.00050530/0.00050530 reconnectType:BUSINESS state:1 成交量(计价货币/以币为单位/以张为单位):0.00000000 / 0.00000000 / 0.00000000
+            //2026-08-02 22:30:01.339 [OkHttp https://ws.okx.com:8443/...] INFO  wss.strategy.msg - [数据]Current Bar: isNewBar:true endIndex:102 currentBar:{end time: 2026-08-02T14:30:00Z, close price: 0.0005053, open price: 0.0005053, low price: 0.0005053 high price: 0.0005053, volume:      0} previousBar:{end time: 2026-08-02T14:29:00Z, close price: 0.0005053, open price: 0.0005053, low price: 0.0005053 high price: 0.0005053, volume:    365}
+            strategyLogger.error("处理K线数据失败", e);
         }
 
         return null;
@@ -88,6 +89,7 @@ public class CustomizeStrategyFactory {
     }
 
     public void stopLoss(BarSeries barSeries, RealTimeStrategyEntity state, Candlestick candlestick) {
+        //strategyLogger.info("\t[检测] barSeries:{} state:{} candlestick:{}", barSeries, state, candlestick);
         // 获取最新的Bar
         Bar currentBar = barSeries.getBar(barSeries.getEndIndex());
 
@@ -113,7 +115,7 @@ public class CustomizeStrategyFactory {
         strategyLogger.info(positionCalculationResult.printSummary("\t"));
 
         if (tracker.isStopLossTriggered()) {
-            log.info("\n⚠️ 止损已被触发！交易结束。");
+            strategyLogger.info("\n⚠️ 止损已被触发！交易结束。");
 
             tracker.logStatus();
             // 显示调整历史
@@ -124,7 +126,7 @@ public class CustomizeStrategyFactory {
             positionDetail = null;
             // 显示最终统计
             TradeStatistics stats = tracker.getStatistics();
-            log.info("""
+            strategyLogger.info("""
                             
                             ┌─────────────────────────────────────────────────────┐
                             │                   最终统计                          │
@@ -187,28 +189,77 @@ public class CustomizeStrategyFactory {
     /**
      * 开多仓
      */
+//    private void openLongPosition(Bar currentBar, Bar previousBar, RealTimeStrategyEntity state, Candlestick candlestick) {
+//        Num entryPrice = currentBar.getClosePrice();
+//        Num stopLoss = DecimalNum.valueOf(entryPrice.bigDecimalValue().multiply(BigDecimal.valueOf(1 + triggerPoints / 100)));
+//        strategyLogger.info("[操作][开多仓] 入场价: {}, 止损价: {}, 时间: {} symbol:{}", entryPrice, stopLoss, currentBar.getEndTime(), state.getSymbolSwap());
+//    }
     private void openLongPosition(Bar currentBar, Bar previousBar, RealTimeStrategyEntity state, Candlestick candlestick) {
         Num entryPrice = currentBar.getClosePrice();
-        Num stopLoss = DecimalNum.valueOf(entryPrice.bigDecimalValue().multiply(BigDecimal.valueOf(1 + triggerPoints / 100)));
-        log.info("<TEST>【开多仓】 入场价: {}, 止损价: {}, 时间: {} symbol:{}", entryPrice, stopLoss, currentBar.getEndTime(), state.getSymbolSwap());
-        tradingService.tradeByUsdtValue(state.getSymbol(), BUY_OPEN_LONG_ISOLATED, BigDecimal.valueOf(state.getTradeAmount()), "market", leverage);
+        double percent = triggerPoints / 100.0;  // 0.02
+
+        Num stopLoss = DecimalNum.valueOf(entryPrice.bigDecimalValue().multiply(BigDecimal.valueOf(1 - percent)));
+        Num takeProfit = DecimalNum.valueOf(entryPrice.bigDecimalValue().multiply(BigDecimal.valueOf(1 + percent)));
+
+        // 计算账户权益风险：价格波动% × 杠杆
+        double equityRisk = triggerPoints * leverage;  // 2.0 * 3 = 6.0%
+
+        strategyLogger.info(
+                "[操作][开多仓] 品种: {}, 时间: {}, 入场: {}, 止损: {}(-{}%), 止盈: {}(+{}%), 杠杆: {}x, 账户风险: {}%",
+                state.getSymbolSwap(),
+                currentBar.getEndTime(),
+                entryPrice,
+                stopLoss,
+                triggerPoints,          // 价格波动 2.0%
+                takeProfit,
+                triggerPoints,          // 价格波动 2.0%
+                leverage,               // 3x
+                equityRisk              // 6.0%（杠杆放大后的风险）
+        );
+
+        //tradingService.tradeByUsdtValue(state.getSymbol(), BUY_OPEN_LONG_ISOLATED, BigDecimal.valueOf(state.getTradeAmount()), "market", leverage);
     }
 
     /**
      * 开空仓
      */
+//    private void openShortPosition(Bar currentBar, Bar previousBar, RealTimeStrategyEntity state, Candlestick candlestick) {
+//        Num entryPrice = currentBar.getClosePrice();
+//        Num stopLoss = DecimalNum.valueOf(entryPrice.bigDecimalValue().multiply(BigDecimal.valueOf(1 - triggerPoints / 100)));
+//        strategyLogger.info("[操作][开空仓] 入场价: {}, 止损价: {}, 时间: {} symbol:{}", entryPrice, stopLoss, currentBar.getEndTime(), state.getSymbolSwap());
+//    }
     private void openShortPosition(Bar currentBar, Bar previousBar, RealTimeStrategyEntity state, Candlestick candlestick) {
         Num entryPrice = currentBar.getClosePrice();
-        Num stopLoss = DecimalNum.valueOf(entryPrice.bigDecimalValue().multiply(BigDecimal.valueOf(1 - triggerPoints / 100)));
-        log.info("<TEST>【开空仓】 入场价: {}, 止损价: {}, 时间: {} symbol:{}", entryPrice, stopLoss, currentBar.getEndTime(), state.getSymbolSwap());
-        tradingService.tradeByUsdtValue(state.getSymbolSwap(), SELL_OPEN_SHORT_ISOLATED, BigDecimal.valueOf(state.getTradeAmount()), "market", leverage);
+        double percent = triggerPoints / 100.0;  // 0.02
+
+        Num stopLoss = DecimalNum.valueOf(entryPrice.bigDecimalValue().multiply(BigDecimal.valueOf(1 + percent)));   // 止损在上（正确）
+        Num takeProfit = DecimalNum.valueOf(entryPrice.bigDecimalValue().multiply(BigDecimal.valueOf(1 - percent))); // 止盈在下
+
+        // 计算账户权益风险：价格波动% × 杠杆
+        double equityRisk = triggerPoints * leverage;  // 2.0 * 3 = 6.0%
+
+        strategyLogger.info(
+                "[操作][开空仓] 品种: {}, 时间: {}, 入场: {}, 止损: {}(+{}%), 止盈: {}(-{}%), 杠杆: {}x, 账户风险: {}%",
+                state.getSymbolSwap(),
+                currentBar.getEndTime(),
+                entryPrice,
+                stopLoss,
+                triggerPoints,          // 价格波动 2.0%
+                takeProfit,
+                triggerPoints,          // 价格波动 2.0%
+                leverage,               // 3x
+                equityRisk              // 6.0%（杠杆放大后的风险）
+        );
+        //tradingService.tradeByUsdtValue(state.getSymbolSwap(), SELL_OPEN_SHORT_ISOLATED, BigDecimal.valueOf(state.getTradeAmount()), "market", leverage);
+
     }
 
     /**
      * 平仓
      */
     private void closePosition(String reason, Num exitPrice, RealTimeStrategyEntity state, Candlestick candlestick, PositionDetail positionDetail) {
-        tradingService.closePosition(state.getSymbolSwap(), PositionSide.SHORT == positionDetail.getPosSide() ? BUY_CLOSE_SHORT_ISOLATED : SELL_CLOSE_LONG_ISOLATED);
+        strategyLogger.info("[操作][开空仓] reason:{} 止损价: {} symbol:{} candlestick:{} positionDetail:{}", reason, exitPrice, state.getSymbolSwap(), candlestick, positionDetail);
+        //tradingService.closePosition(state.getSymbolSwap(), PositionSide.SHORT == positionDetail.getPosSide() ? BUY_CLOSE_SHORT_ISOLATED : SELL_CLOSE_LONG_ISOLATED);
     }
 
 }

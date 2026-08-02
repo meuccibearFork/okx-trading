@@ -662,6 +662,7 @@ public class WebSocketUtil {
             }
 
             if (topic != null && messageHandlers.containsKey(topic)) {
+                jsonMessage.put("reconnectType", reconnectType);
                 messageHandlers.get(topic).accept(jsonMessage);
             } else {
                 debugLog("收到未处理的WebSocket消息: {}", message);

@@ -193,6 +193,9 @@ public class RealTimeStrategyEntity {
     }
 
     public String getSymbolSwap(){
+        if(symbol.contains("-SWAP")){
+            return symbol;
+        }
         return symbol + "-SWAP";
     }
 

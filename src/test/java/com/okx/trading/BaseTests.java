@@ -16,31 +16,9 @@ public class BaseTests {
         //you can set the domain as https://www.okx.com or https://aws.okx.com
         config.setDomain("https://www.okx.com");
 
-//        apiKey = "";
-//        passphrase = ".";
-//        secretKey = "";
-
-//        apiKey = "e43e305b-8021-4ff1-a97d-ed3e16357eeb";
-//        passphrase = "12345678Abc.";
-//        secretKey = "AADF82335968EFCDE116191B4B97D430";
-// Ta
-//        config.setApiKey("1c755cb1-02fa-400e-bf4a-78b71cbd083f");
-//        config.setSecretKey("18690BD7007D9278B5BCA01C9A7F095B");
-//        config.setPassphrase("12345678Abc.");
-
-//        config.setApiKey("b81e589c-864a-4401-bedf-819608d0c51f");
-//        config.setSecretKey("F4B5AD175F7AE9457048ED8E39BDB91D");
-//        config.setPassphrase("9WVku96XdasrC9u.");
-//        config.setXSimulatedTrading("0");
-
-
-
-//        OKX_API_KEY=af02b980-793b-4a6c-9bdd-09750daff54f
-//                OKX_PASSPHRASE=9WVku96XdasrC9u.
-//                OKX_SECRET_KEY=E132E77F7190192DD6B3D85882A72BCA
-        config.setApiKey("af02b980-793b-4a6c-9bdd-09750daff54f");
-        config.setSecretKey("E132E77F7190192DD6B3D85882A72BCA");
-        config.setPassphrase("9WVku96XdasrC9u.");
+        config.setApiKey("8cd3dc15-f58e-44b1-96e8-8764364ba81f");
+        config.setSecretKey("6119C3AA4FC26E9F037E979D5328E85D");
+        config.setPassphrase("123456Abc.");
         config.setXSimulatedTrading("0");
 
 //        config.setApiKey("c2af6981-07ca-4dc1-8996-8ef4553a310f");
@@ -51,7 +29,6 @@ public class BaseTests {
         //请求模拟盘的接口需要传入1，否则传入0
         //if you want to request the endpoint in demo trading,please input 1,otherwise,please input 0
 //        config.setXSimulatedTrading("0");
-
 
         config.setPrint(true);
         config.setI18n(I18nEnum.ENGLISH);

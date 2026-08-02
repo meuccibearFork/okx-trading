@@ -82,6 +82,8 @@ public class HttpClientConfig {
             builder.proxy(proxy);
         }
 
+
+
         return builder.build();
     }
 }

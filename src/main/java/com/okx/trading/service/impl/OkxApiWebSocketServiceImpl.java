@@ -8,6 +8,7 @@ import com.okex.open.api.bean.trade.param.PlaceOrder;
 import com.okex.open.api.service.marketData.MarketDataAPIService;
 import com.okex.open.api.service.trade.TradeAPIService;
 import com.okx.trading.config.OkxApiConfig;
+import com.okx.trading.event.WebSocketReconnectEvent;
 import com.okx.trading.exception.OkxApiException;
 import com.okx.trading.model.account.AccountBalance;
 import com.okx.trading.model.account.AccountBalance.AssetBalance;
@@ -212,6 +213,8 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
 
                 // 通知实时策略管理器处理新的K线数据
                 if (realTimeStrategyManager != null) {
+                    WebSocketReconnectEvent.ReconnectType reconnectType = (WebSocketReconnectEvent.ReconnectType) message.get("reconnectType");
+                    candlestick.setReconnectType(reconnectType);
                     realTimeStrategyManager.handleNewKlineData(symbol, interval, candlestick);
                 }
             }
@@ -701,7 +704,8 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
             JSONObject arg = new JSONObject();
 
             if ("SWAP".equals(instType)) {
-                arg.put("instId", orderRequest.getSymbol() + "-SWAP");
+                String symbol = orderRequest.getSymbol();
+                arg.put("instId", symbol.contains("-SWAP") ? symbol : orderRequest.getSymbol() + "-SWAP");
                 arg.put("tdMode", "isolated");
             } else {
                 arg.put("instId", orderRequest.getSymbol());
@@ -980,6 +984,7 @@ public class OkxApiWebSocketServiceImpl implements OkxApiService {
         long timestamp = Long.parseLong(candleData.getString(0));
         LocalDateTime time = LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.of("UTC+8"));
         candlestick.setOpenTime(time);
+        candlestick.setTimestamp(timestamp);
 
 //        openTime open high low close volume volCcy quoteVolume state
 

@@ -29,7 +29,9 @@ import java.util.stream.Collectors;
 
 import static com.okx.trading.constant.IndicatorInfo.RUNNING;
 import static com.okx.trading.constant.IndicatorInfo.BUY;
+
 import com.okx.trading.model.market.Ticker;
+
 import java.time.Duration;
 
 /**
@@ -121,6 +123,10 @@ public class RealTimeStrategyController {
         try {
             if (!realTimeStrategyManager.isLoadedStrategies()) {
                 return com.okx.trading.model.common.ApiResponse.error(500, "策略未加载完成，请稍后再试");
+            }
+
+            if ("MEME-USDT".equals(symbol)) {
+                symbol = String.format("%s-SWAP", symbol);
             }
 
             log.info("开始实时策略回测: strategyCode={}, symbol={}, interval={}", strategyCode, symbol, interval);

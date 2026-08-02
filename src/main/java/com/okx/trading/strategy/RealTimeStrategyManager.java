@@ -148,7 +148,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
      * 真正执行实时策略逻辑，判断买卖信号的地方
      */
     private void processStrategySignal(RealTimeStrategyEntity state, Candlestick candlestick) {
-        strategyLogger.info("<LOG>processStrategySignal {}", JSON.toJSONString(candlestick));
+        strategyLogger.info("[数据]K线数据 {}", candlestick);
         // 更新BarSeries - 智能判断是更新还是添加新bar
         Bar newBar = createBarFromCandlestick(candlestick);
         BarSeries series = runningBarSeries.get(state.getSymbol() + "_" + state.getInterval());
@@ -164,14 +164,15 @@ public class RealTimeStrategyManager implements ApplicationRunner {
             boolean forbiddenTradeTime = false;
             boolean signalOfSamePeriod = false;
 
+            if (CommonConfig.isNotBuild(state.getStrategyCode())) {
+                customizeStrategyFactory.stopLoss(series, state, candlestick);
+            }
+
             long intervalSeconds = historicalDataService.getIntervalMinutes(candlestick.getIntervalVal()) * 60;
             // 在每个周期的最后15秒判断信号是否触发，而不是在周期刚开始就触发了就执行交易
             // 提到上面，无论是否策略的首次交易都要求在每个周期的最后15秒才触发交易
             forbiddenTradeTime = Duration.between(candlestick.getOpenTime().plusSeconds(intervalSeconds), LocalDateTime.now()).abs().get(ChronoUnit.SECONDS) > 15;
             if (forbiddenTradeTime) {
-                if (CommonConfig.isNotBuild(state.getStrategyCode())) {
-                    customizeStrategyFactory.stopLoss(series, state, candlestick);
-                }
                 return;
             }
 
@@ -187,7 +188,9 @@ public class RealTimeStrategyManager implements ApplicationRunner {
             // 检查交易信号
             int currentIndex = series.getEndIndex();
             if (CommonConfig.isNotBuild(state.getStrategyCode())) {
-                customizeStrategyFactory.yjwStrategy(series, state, candlestick);
+                if (1 == candlestick.getState()) {
+                    customizeStrategyFactory.yjwStrategy(series, state, candlestick);
+                }
             } else {
                 boolean shouldBuy = state.getStrategy().shouldEnter(currentIndex);
                 boolean shouldSell = state.getStrategy().shouldExit(currentIndex);
