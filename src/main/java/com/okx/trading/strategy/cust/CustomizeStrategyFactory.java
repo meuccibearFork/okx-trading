@@ -66,7 +66,7 @@ public class CustomizeStrategyFactory {
                     } else if (signal.isShortSignal()) {
                         openShortPosition(currentBar, previousBar, state, candlestick);
                     } else {
-                        strategyLogger.info("[数据][计算信号不出操作] 品种: {}, 时间: {}", state.getSymbolSwap(), currentBar.getEndTime());
+                        strategyLogger.info("[数据][计算不出信号操作] 品种: {}, 时间: {}", state.getSymbolSwap(), currentBar.getEndTime());
                     }
                 }
             }
