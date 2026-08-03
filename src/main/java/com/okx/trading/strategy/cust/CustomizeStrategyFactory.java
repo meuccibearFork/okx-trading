@@ -1,8 +1,10 @@
 package com.okx.trading.strategy.cust;
 
 import cn.hutool.core.util.ObjectUtil;
+import com.alibaba.fastjson.JSON;
 import com.okex.open.api.bean.account.result.PositionDetail;
 import com.okex.open.api.bean.account.result.tracker.DynamicStopLossTracker;
+import com.okex.open.api.bean.account.result.tracker.PriceUpdate;
 import com.okex.open.api.bean.account.result.tracker.TradeStatistics;
 import com.okex.open.api.bean.calculator.PositionCalculationResult;
 import com.okex.open.api.calculator.OKXProfitCalculator;
@@ -23,7 +25,9 @@ import org.ta4j.core.num.Num;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static com.okex.open.api.constant.OkxTradeType.*;
 
@@ -104,7 +108,7 @@ public class CustomizeStrategyFactory {
         Bar currentBar = barSeries.getBar(barSeries.getEndIndex());
 
         init(state.getSymbolSwap());
-        if (positionDetail == null) {
+        if (positionDetail == null || redisCacheService.hasKey(isTrackerClose)) {
             return;
         }
 
@@ -119,15 +123,21 @@ public class CustomizeStrategyFactory {
                     .build();
         }
 
+        List<PriceUpdate> history = tracker.getPriceHistory();
+        int size = history.size();
+        int start = Math.max(0, size - 10);
+        List<BigDecimal> priceHistory = history.subList(start, size)
+                .stream()
+                .map(PriceUpdate::getPrice)
+                .collect(Collectors.toList());
+
+        strategyLogger.info("[数据]priceHistory{}", JSON.toJSONString(priceHistory));
         PositionCalculationResult positionCalculationResult = OKXProfitCalculator.calculateAll(tracker, positionDetail);
 
         // 每次更新后显示状态
         strategyLogger.info(positionCalculationResult.printSummary("\t"));
 
         if (tracker.isStopLossTriggered()) {
-            if(redisCacheService.hasKey(isTrackerClose)){
-                return;
-            }
 
             strategyLogger.info("\n⚠️ 止损已被触发！交易结束。");
 
@@ -164,7 +174,7 @@ public class CustomizeStrategyFactory {
                     stats.getRiskRewardRatio().setScale(2, RoundingMode.HALF_UP)
             );
 
-            redisCacheService.set(isTrackerClose, "", 60, TimeUnit.MINUTES);
+            redisCacheService.set(isTrackerClose, null, 60, TimeUnit.MINUTES);
         }
 
     }
