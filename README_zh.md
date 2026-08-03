@@ -698,3 +698,12 @@ openTime open close low high volume quoteVolume quoteVolume volCcy
 
 
 
+
+DEEPSEEK_API_KEY=sk-ebb1ecd731ff40b798a959be698a7faf
+MYSQL_PASSWORD=Password123?
+MYSQL_USERNAME=root
+OKX_API_KEY=af02b980-793b-4a6c-9bdd-09750daff54f
+OKX_PASSPHRASE=9WVku96XdasrC9u.
+OKX_SECRET_KEY=E132E77F7190192DD6B3D85882A72BCA
+
+

@@ -6,6 +6,7 @@ import com.okx.trading.model.market.Ticker;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Redis缓存服务接口
@@ -122,4 +123,9 @@ public interface RedisCacheService {
      * @return 删除是否成功
      */
     boolean clearKlineSortedSet(String symbol, String interval);
+
+    void set(String key, String value, long timeout, TimeUnit unit);
+
+
+    Boolean hasKey(String key);
 }

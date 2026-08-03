@@ -6,10 +6,13 @@ import com.okex.open.api.bean.account.result.tracker.DynamicStopLossTracker;
 import com.okex.open.api.bean.account.result.tracker.TradeStatistics;
 import com.okex.open.api.bean.calculator.PositionCalculationResult;
 import com.okex.open.api.calculator.OKXProfitCalculator;
+import com.okex.open.api.constant.PositionSide;
 import com.okex.open.api.service.trade.TradingService;
 import com.okx.trading.constant.log.LoggerName;
 import com.okx.trading.model.entity.RealTimeStrategyEntity;
 import com.okx.trading.model.market.Candlestick;
+import com.okx.trading.service.RedisCacheService;
+import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +23,9 @@ import org.ta4j.core.num.Num;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.concurrent.TimeUnit;
+
+import static com.okex.open.api.constant.OkxTradeType.*;
 
 /**
  * 自定义-策略工厂 - 高级策略集合
@@ -36,6 +42,9 @@ public class CustomizeStrategyFactory {
 
     @Value("${strategy.yjw.tp:}")
     private double triggerPoints = 2.0;
+
+    @Resource
+    private RedisCacheService redisCacheService;
 
     private final int leverage = 3;
 
@@ -80,6 +89,7 @@ public class CustomizeStrategyFactory {
     }
 
     DynamicStopLossTracker tracker;
+    String isTrackerClose = "isTrackerClose";
 
     void init(String symbolSwap) {
         if (ObjectUtil.isEmpty(positionDetail)) {
@@ -115,6 +125,10 @@ public class CustomizeStrategyFactory {
         strategyLogger.info(positionCalculationResult.printSummary("\t"));
 
         if (tracker.isStopLossTriggered()) {
+            if(redisCacheService.hasKey(isTrackerClose)){
+                return;
+            }
+
             strategyLogger.info("\n⚠️ 止损已被触发！交易结束。");
 
             tracker.logStatus();
@@ -149,6 +163,8 @@ public class CustomizeStrategyFactory {
                     java.time.Duration.between(stats.getStartTime(), stats.getLastUpdateTime()).getSeconds(),
                     stats.getRiskRewardRatio().setScale(2, RoundingMode.HALF_UP)
             );
+
+            redisCacheService.set(isTrackerClose, "", 60, TimeUnit.MINUTES);
         }
 
     }
@@ -189,11 +205,6 @@ public class CustomizeStrategyFactory {
     /**
      * 开多仓
      */
-//    private void openLongPosition(Bar currentBar, Bar previousBar, RealTimeStrategyEntity state, Candlestick candlestick) {
-//        Num entryPrice = currentBar.getClosePrice();
-//        Num stopLoss = DecimalNum.valueOf(entryPrice.bigDecimalValue().multiply(BigDecimal.valueOf(1 + triggerPoints / 100)));
-//        strategyLogger.info("[操作][开多仓] 入场价: {}, 止损价: {}, 时间: {} symbol:{}", entryPrice, stopLoss, currentBar.getEndTime(), state.getSymbolSwap());
-//    }
     private void openLongPosition(Bar currentBar, Bar previousBar, RealTimeStrategyEntity state, Candlestick candlestick) {
         Num entryPrice = currentBar.getClosePrice();
         double percent = triggerPoints / 100.0;  // 0.02
@@ -217,17 +228,12 @@ public class CustomizeStrategyFactory {
                 equityRisk              // 6.0%（杠杆放大后的风险）
         );
 
-        //tradingService.tradeByUsdtValue(state.getSymbol(), BUY_OPEN_LONG_ISOLATED, BigDecimal.valueOf(state.getTradeAmount()), "market", leverage);
+        tradingService.tradeByUsdtValue(state.getSymbol(), BUY_OPEN_LONG_ISOLATED, BigDecimal.valueOf(state.getTradeAmount()), "market", leverage);
     }
 
     /**
      * 开空仓
      */
-//    private void openShortPosition(Bar currentBar, Bar previousBar, RealTimeStrategyEntity state, Candlestick candlestick) {
-//        Num entryPrice = currentBar.getClosePrice();
-//        Num stopLoss = DecimalNum.valueOf(entryPrice.bigDecimalValue().multiply(BigDecimal.valueOf(1 - triggerPoints / 100)));
-//        strategyLogger.info("[操作][开空仓] 入场价: {}, 止损价: {}, 时间: {} symbol:{}", entryPrice, stopLoss, currentBar.getEndTime(), state.getSymbolSwap());
-//    }
     private void openShortPosition(Bar currentBar, Bar previousBar, RealTimeStrategyEntity state, Candlestick candlestick) {
         Num entryPrice = currentBar.getClosePrice();
         double percent = triggerPoints / 100.0;  // 0.02
@@ -250,7 +256,7 @@ public class CustomizeStrategyFactory {
                 leverage,               // 3x
                 equityRisk              // 6.0%（杠杆放大后的风险）
         );
-        //tradingService.tradeByUsdtValue(state.getSymbolSwap(), SELL_OPEN_SHORT_ISOLATED, BigDecimal.valueOf(state.getTradeAmount()), "market", leverage);
+        tradingService.tradeByUsdtValue(state.getSymbolSwap(), SELL_OPEN_SHORT_ISOLATED, BigDecimal.valueOf(state.getTradeAmount()), "market", leverage);
 
     }
 
@@ -259,7 +265,7 @@ public class CustomizeStrategyFactory {
      */
     private void closePosition(String reason, Num exitPrice, RealTimeStrategyEntity state, Candlestick candlestick, PositionDetail positionDetail) {
         strategyLogger.info("[操作][开空仓] reason:{} 止损价: {} symbol:{} candlestick:{} positionDetail:{}", reason, exitPrice, state.getSymbolSwap(), candlestick, positionDetail);
-        //tradingService.closePosition(state.getSymbolSwap(), PositionSide.SHORT == positionDetail.getPosSide() ? BUY_CLOSE_SHORT_ISOLATED : SELL_CLOSE_LONG_ISOLATED);
+        tradingService.closePosition(state.getSymbolSwap(), PositionSide.SHORT == positionDetail.getPosSide() ? BUY_CLOSE_SHORT_ISOLATED : SELL_CLOSE_LONG_ISOLATED);
     }
 
 }

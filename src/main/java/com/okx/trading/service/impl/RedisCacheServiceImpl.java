@@ -334,4 +334,14 @@ public class RedisCacheServiceImpl implements RedisCacheService {
             return false;
         }
     }
+
+    @Override
+    public void set(String key, String value, long timeout, TimeUnit unit){
+        redisTemplate.opsForValue().set(key, value, timeout, unit);
+    }
+
+    @Override
+    public Boolean hasKey(String key){
+        return redisTemplate.hasKey(key);
+    }
 }

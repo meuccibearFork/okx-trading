@@ -18,10 +18,10 @@ services:
       - "8088:8088"
     environment:
       - MYSQL_USERNAME=root
-      - MYSQL_PASSWORD=Password123?
-      - SPRING_DATASOURCE_URL=jdbc:mysql://118.107.26.215:3306/okx_trading?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false
-      - SPRING_REDIS_HOST=118.107.26.215
-      - SPRING_REDIS_PORT=6379
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-}
+      - SPRING_REDIS_HOST=${SPRING_REDIS_HOST:-}
+      - SPRING_REDIS_PORT=${SPRING_REDIS_PORT:-}
       - JAVA_OPTS=-Xmx1g -Xms512m
       - OKX_API_KEY=${OKX_API_KEY:-}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
