@@ -1,5 +1,7 @@
 package com.okx.trading.strategy.cust;
 
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.alibaba.fastjson.JSON;
 import com.okex.open.api.bean.account.result.PositionDetail;
@@ -23,8 +25,12 @@ import org.ta4j.core.*;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -134,6 +140,12 @@ public class CustomizeStrategyFactory {
         strategyLogger.info("[数据]priceHistory{}", JSON.toJSONString(priceHistory));
         PositionCalculationResult positionCalculationResult = OKXProfitCalculator.calculateAll(tracker, positionDetail);
 
+        BigDecimal bigDecimal = positionCalculationResult.getPriceChangePercent().divide(new BigDecimal("100"), 8, RoundingMode.HALF_UP)
+                .multiply(positionCalculationResult.getLeverage()).multiply(new BigDecimal("100")).setScale(4, RoundingMode.HALF_UP);
+
+        savePercentage("percentages", positionCalculationResult.getProfitPercentage().add(BigDecimal.valueOf(100)));
+        savePercentage("percentages1", bigDecimal);
+
         // 每次更新后显示状态
         strategyLogger.info(positionCalculationResult.printSummary("\t"));
 
@@ -177,6 +189,14 @@ public class CustomizeStrategyFactory {
             redisCacheService.set(isTrackerClose, null, 60, TimeUnit.MINUTES);
         }
 
+    }
+
+    public static void savePercentage(String fileName, BigDecimal percentage) {
+        String formatted = NumberUtil.decimalFormat("#.######", percentage.doubleValue());
+        String filePath = System.getProperty("user.dir") + "/" + fileName + ".txt";
+
+        // 追加一行（Hutool 自动处理换行和文件创建）
+        FileUtil.appendLines(Collections.singletonList(formatted), filePath, StandardCharsets.UTF_8);
     }
 
     /**
@@ -279,3 +299,18 @@ public class CustomizeStrategyFactory {
     }
 
 }
+
+
+//BigDecimal entryPrice = positionDetail.getAvgPx();
+//        BigDecimal currentPrice = positionDetail.getMarkPx();
+//        BigDecimal positionSize = positionDetail.getPos();
+//        BigDecimal leverage = positionDetail.getPos();
+//        PositionSide positionSide = positionDetail.getPosSide();
+//
+//        BigDecimal profitPercentage = OKXProfitCalculator.calculateProfitPercentage(entryPrice, currentPrice, leverage, positionSide);
+//
+//        BigDecimal add = positionCalculationResult.getProfitPercentage().add(BigDecimal.valueOf(100));
+//
+//        strategyLogger.info("[数据]calculateProfitPercentage:{} 杠杆收益率:{} add:{}", profitPercentage, positionCalculationResult.leverageYield(), add);
+
+
