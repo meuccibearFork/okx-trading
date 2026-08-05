@@ -1,29 +1,21 @@
-package com.okx.trading.account;
+package com.okx.trading.test.account;
 
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.TypeReference;
 import com.okex.open.api.bean.account.result.AccountInfo;
-import com.okex.open.api.bean.account.result.PositionDetail;
-import com.okex.open.api.bean.account.result.PositionInfo;
-import com.okex.open.api.bean.account.result.tracker.DynamicStopLossTracker;
-import com.okex.open.api.bean.calculator.PositionCalculationResult;
-import com.okex.open.api.bean.result.TradeResponse;
-import com.okex.open.api.calculator.OKXProfitCalculator;
-import com.okex.open.api.config.APIConfiguration;
-import com.okex.open.api.constant.MarginMode;
-import com.okex.open.api.constant.OkxTradeType;
-import com.okex.open.api.constant.PositionSide;
-import com.okex.open.api.enums.I18nEnum;
-import com.okex.open.api.service.trade.TradingService;
-import com.okex.open.api.service.trade.impl.OkxRealTradingService;
+import com.okex.open.api.bean.trade.result.TradeResponse;
+import com.okex.open.api.component.calculator.dto.PositionDetail;
+import com.okex.open.api.component.calculatorTracker.dto.PositionCalculationResult;
+import com.okex.open.api.component.constant.MarginMode;
+import com.okex.open.api.component.constant.OkxTradeType;
+import com.okex.open.api.component.constant.PositionSide;
+import com.okex.open.api.component.tracker.DynamicStopLossTracker;
+import com.okex.open.api.service.trading.TradingService;
+import com.okex.open.api.service.trading.impl.TradingServiceImpl;
 import com.okx.trading.BaseTests;
-import com.okx.trading.dto.PositionsResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -37,7 +29,7 @@ public class OkxTradingSystemTest extends BaseTests {
     public void before() {
         this.config = this.config();
         log.info("========== OKX交易系统初始化 ==========");
-        tradingManager = new OkxRealTradingService(this.config);
+        tradingManager = new TradingServiceImpl(this.config);
         log.info("交易系统初始化完成");
         log.info("当前模式: {}", tradingManager.isSimulator() ? "模拟交易" : "真实交易");
     }
@@ -137,7 +129,7 @@ public class OkxTradingSystemTest extends BaseTests {
         positions.printEnhancedPositions();
         System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
         PositionDetail positionDetail = positions.getPositionDetailOne(instrumentId);
-        PositionCalculationResult positionCalculationResult = OKXProfitCalculator.calculateAll(tracker, positionDetail);
+        PositionCalculationResult positionCalculationResult = positionDetail.calculateAll();
         log.info(positionCalculationResult.printSummary());
 
         // 每次更新后显示状态

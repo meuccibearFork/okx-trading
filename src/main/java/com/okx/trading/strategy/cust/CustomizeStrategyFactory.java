@@ -4,14 +4,12 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.alibaba.fastjson.JSON;
-import com.okex.open.api.bean.account.result.PositionDetail;
-import com.okex.open.api.bean.account.result.tracker.DynamicStopLossTracker;
-import com.okex.open.api.bean.account.result.tracker.PriceUpdate;
-import com.okex.open.api.bean.account.result.tracker.TradeStatistics;
-import com.okex.open.api.bean.calculator.PositionCalculationResult;
-import com.okex.open.api.calculator.OKXProfitCalculator;
-import com.okex.open.api.constant.PositionSide;
-import com.okex.open.api.service.trade.TradingService;
+import com.okex.open.api.component.calculator.dto.PositionCalculationResult;
+import com.okex.open.api.component.calculator.dto.PositionDetail;
+import com.okex.open.api.component.constant.PositionSide;
+import com.okex.open.api.component.tracker.DynamicStopLossTracker;
+import com.okex.open.api.component.tracker.TradeStatistics;
+import com.okex.open.api.service.trading.TradingService;
 import com.okx.trading.constant.log.LoggerName;
 import com.okx.trading.model.entity.RealTimeStrategyEntity;
 import com.okx.trading.model.market.Candlestick;
@@ -25,8 +23,6 @@ import org.ta4j.core.*;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -35,7 +31,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.okex.open.api.constant.OkxTradeType.*;
+import static com.okex.open.api.component.constant.OkxTradeType.*;
+
 
 /**
  * 自定义-策略工厂 - 高级策略集合
@@ -129,25 +126,22 @@ public class CustomizeStrategyFactory {
                     .build();
         }
 
-        List<PriceUpdate> history = tracker.getPriceHistory();
-        int size = history.size();
-        int start = Math.max(0, size - 10);
-        List<BigDecimal> priceHistory = history.subList(start, size)
-                .stream()
-                .map(PriceUpdate::getPrice)
-                .collect(Collectors.toList());
-
-        strategyLogger.info("[数据]priceHistory{}", JSON.toJSONString(priceHistory));
-        PositionCalculationResult positionCalculationResult = OKXProfitCalculator.calculateAll(tracker, positionDetail);
+        PositionCalculationResult positionCalculationResult = positionDetail.calculateAll();
 
         BigDecimal bigDecimal = positionCalculationResult.getPriceChangePercent().divide(new BigDecimal("100"), 8, RoundingMode.HALF_UP)
                 .multiply(positionCalculationResult.getLeverage()).multiply(new BigDecimal("100")).setScale(4, RoundingMode.HALF_UP);
+        BigDecimal newData = positionCalculationResult.getProfitPercentage().add(BigDecimal.valueOf(100));
 
-        savePercentage("percentages", positionCalculationResult.getProfitPercentage().add(BigDecimal.valueOf(100)));
+        savePercentage("percentages", newData);
         savePercentage("percentages1", bigDecimal);
 
         // 每次更新后显示状态
         strategyLogger.info(positionCalculationResult.printSummary("\t"));
+
+        tracker.updateData(newData);
+
+        // 每次更新后显示状态
+        tracker.logStatus();
 
         if (tracker.isStopLossTriggered()) {
 
@@ -223,7 +217,9 @@ public class CustomizeStrategyFactory {
      * 计算平均价
      */
     private Num calculateAveragePrice(Bar bar) {
-        if (bar == null) return DecimalNum.valueOf(0);
+        if (bar == null) {
+            return DecimalNum.valueOf(0);
+        }
 
         return bar.getOpenPrice()
                 .plus(bar.getHighPrice())

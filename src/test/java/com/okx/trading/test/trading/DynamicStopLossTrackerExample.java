@@ -1,7 +1,9 @@
-package com.okx.trading.strategy.test;
+package com.okx.trading.test.trading;
 
-import com.okex.open.api.bean.account.result.tracker.DynamicStopLossTracker;
-import com.okex.open.api.bean.account.result.tracker.TradeStatistics;
+import cn.hutool.core.convert.Convert;
+import cn.hutool.core.io.FileUtil;
+import com.okex.open.api.component.tracker.DynamicStopLossTracker;
+import com.okex.open.api.component.tracker.TradeStatistics;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
@@ -25,24 +27,30 @@ public class DynamicStopLossTrackerExample {
                     .incrementPercent(BigDecimal.valueOf(5))
                     .build();
 
-            // 模拟价格变化 - 从99开始，避免一开始就触发止损
-            List<BigDecimal> priceSequence = List.of(
-                    BigDecimal.valueOf(99),   // -1%
-                    BigDecimal.valueOf(102),  // +2%
-                    BigDecimal.valueOf(105),  // +5%，应该调整止损点到0%
-                    BigDecimal.valueOf(107),  // +7%
-                    BigDecimal.valueOf(110),  // +10%，应该调整止损点到+5%
-                    BigDecimal.valueOf(108),  // +8%，但止损点已经是+5%，不会回撤
-                    BigDecimal.valueOf(115),  // +15%，应该调整止损点到+10%
-                    BigDecimal.valueOf(112)   // +12%，触发止损！
-            );
+//            // 模拟价格变化 - 从99开始，避免一开始就触发止损
+//            List<BigDecimal> priceSequence = List.of(
+//                    BigDecimal.valueOf(99),   // -1%
+//                    BigDecimal.valueOf(102),  // +2%
+//                    BigDecimal.valueOf(105),  // +5%，应该调整止损点到0%
+//                    BigDecimal.valueOf(107),  // +7%
+//                    BigDecimal.valueOf(110),  // +10%，应该调整止损点到+5%
+//                    BigDecimal.valueOf(108),  // +8%，但止损点已经是+5%，不会回撤
+//                    BigDecimal.valueOf(115),  // +15%，应该调整止损点到+10%
+//                    BigDecimal.valueOf(112)   // +12%，触发止损！
+//            );
+
+            // 1. 直接拿到 List<String>（无需重写任何方法）
+            List<String> stringList = FileUtil.readLines("percentages.txt", "UTF-8");
+
+            // 2. 借助 Stream 一行转换为 List<BigDecimal>
+            List<BigDecimal> priceSequence = stringList.stream()
+                    .map(Convert::toBigDecimal)
+                    .toList();
 
             log.info("开始模拟价格更新...\n");
 
-            for (int i = 0; i < priceSequence.size(); i++) {
-                log.info("\n===== 第{}次价格更新: {} =====", i + 1, priceSequence.get(i));
-
-                boolean adjusted = tracker.updatePrice(priceSequence.get(i));
+            for (BigDecimal bigDecimal : priceSequence) {
+                boolean adjusted = tracker.updateData(bigDecimal);
 
                 // 每次更新后显示状态
                 tracker.logStatus();

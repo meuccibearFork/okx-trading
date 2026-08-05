@@ -7,9 +7,9 @@ import com.okex.open.api.service.marketData.impl.MarketDataAPIServiceImpl;
 import com.okex.open.api.service.publicData.PublicDataAPIService;
 import com.okex.open.api.service.publicData.impl.PublicDataAPIServiceImpl;
 import com.okex.open.api.service.trade.TradeAPIService;
-import com.okex.open.api.service.trade.TradingService;
-import com.okex.open.api.service.trade.impl.OkxRealTradingService;
 import com.okex.open.api.service.trade.impl.TradeAPIServiceImpl;
+import com.okex.open.api.service.trading.TradingService;
+import com.okex.open.api.service.trading.impl.TradingServiceImpl;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,7 +32,7 @@ public class OkxClientConfig {
 
     @Bean
     public TradingService realTradingService(){
-        return new OkxRealTradingService(convertConfiguration());
+        return new TradingServiceImpl(convertConfiguration());
     }
 
     /**
