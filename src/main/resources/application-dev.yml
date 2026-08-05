@@ -155,4 +155,5 @@ strategy:
         interval: 600000
         frequently: false
   yjw:
-    tp: ${TP:2}
+    initialStopLoss: ${INITIAL_STOP_LOSS:2}
+    incrementPercent: ${INCREMENT_PERCENT:1}

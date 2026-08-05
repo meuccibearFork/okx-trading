@@ -3,7 +3,6 @@ package com.okx.trading.strategy.cust;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.ObjectUtil;
-import com.alibaba.fastjson.JSON;
 import com.okex.open.api.component.calculator.dto.PositionCalculationResult;
 import com.okex.open.api.component.calculator.dto.PositionDetail;
 import com.okex.open.api.component.constant.PositionSide;
@@ -47,8 +46,11 @@ public class CustomizeStrategyFactory {
 
     PositionDetail positionDetail;
 
-    @Value("${strategy.yjw.tp:}")
+    @Value("${strategy.yjw.initialStopLoss:}")
     private double triggerPoints = 2.0;
+
+    @Value("${strategy.yjw.incrementPercent:}")
+    private double incrementPercent = 1;
 
     @Resource
     private RedisCacheService redisCacheService;
@@ -122,7 +124,7 @@ public class CustomizeStrategyFactory {
             tracker = DynamicStopLossTracker.builder()
                     .entryPrice(BigDecimal.valueOf(100))
                     .initialStopLossPercent(BigDecimal.valueOf(-triggerPoints))
-                    .incrementPercent(BigDecimal.valueOf(triggerPoints))
+                    .incrementPercent(BigDecimal.valueOf(incrementPercent))
                     .build();
         }
 
