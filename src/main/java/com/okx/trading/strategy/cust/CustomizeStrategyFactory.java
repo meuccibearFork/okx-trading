@@ -126,30 +126,28 @@ public class CustomizeStrategyFactory {
                     .initialStopLossPercent(BigDecimal.valueOf(-triggerPoints))
                     .incrementPercent(BigDecimal.valueOf(incrementPercent))
                     .build();
+
+            PositionCalculationResult positionCalculationResult = positionDetail.calculateAll();
+            strategyLogger.info(positionCalculationResult.printSummary("\t"));
         }
 
         PositionCalculationResult positionCalculationResult = positionDetail.calculateAll();
 
         BigDecimal bigDecimal = positionCalculationResult.getPriceChangePercent().divide(new BigDecimal("100"), 8, RoundingMode.HALF_UP)
                 .multiply(positionCalculationResult.getLeverage()).multiply(new BigDecimal("100")).setScale(4, RoundingMode.HALF_UP);
-        BigDecimal newData = positionCalculationResult.getProfitPercentage().add(BigDecimal.valueOf(100));
-
-        savePercentage("percentages", newData);
         savePercentage("percentages1", bigDecimal);
 
-        // 每次更新后显示状态
-        strategyLogger.info(positionCalculationResult.printSummary("\t"));
+        BigDecimal newData = positionCalculationResult.getProfitPercentage().add(BigDecimal.valueOf(100));
+        savePercentage("percentages", newData);
 
         tracker.updateData(newData);
-
-        // 每次更新后显示状态
         tracker.logStatus();
 
         if (tracker.isStopLossTriggered()) {
+            strategyLogger.info(positionCalculationResult.printSummary("\t"));
 
             strategyLogger.info("\n⚠️ 止损已被触发！交易结束。");
 
-            tracker.logStatus();
             // 显示调整历史
             tracker.logAdjustmentHistory();
 
