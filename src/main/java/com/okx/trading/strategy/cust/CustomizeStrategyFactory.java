@@ -3,6 +3,7 @@ package com.okx.trading.strategy.cust;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.json.JSONUtil;
 import com.okex.open.api.component.calculator.dto.PositionCalculationResult;
 import com.okex.open.api.component.calculator.dto.PositionDetail;
 import com.okex.open.api.component.constant.PositionSide;
@@ -344,7 +345,7 @@ public class CustomizeStrategyFactory {
             }
             return null;
         } else {
-            redisCacheService.setCache(format, positionDetail, timeoutMinutes);
+            redisCacheService.setCache(format, JSONUtil.toJsonStr(positionDetail), timeoutMinutes);
         }
         return positionDetail;
     }
