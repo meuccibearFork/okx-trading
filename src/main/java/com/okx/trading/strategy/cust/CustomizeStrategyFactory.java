@@ -328,7 +328,7 @@ public class CustomizeStrategyFactory {
             }
             return bigDecimal;
         } else {
-            redisCacheService.setCache(format, bigDecimal, timeoutMinutes);
+            redisCacheService.setCache(format, bigDecimal.toString(), timeoutMinutes);
         }
         return bigDecimal;
     }
