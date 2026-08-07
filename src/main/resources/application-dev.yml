@@ -111,7 +111,7 @@ deepseek:
 logging:
   level:
     root: INFO
-    com.okx.trading: INFO
+#    com.okx.trading: INFO
     org.hibernate.SQL: OFF
     org.hibernate.type.descriptor.sql.BasicBinder: OFF
     okhttp3.OkHttpClient: ERROR
@@ -155,5 +155,5 @@ strategy:
         interval: 600000
         frequently: false
   yjw:
-    initialStopLoss: ${INITIAL_STOP_LOSS:2}
-    incrementPercent: ${INCREMENT_PERCENT:1}
+    initialStopLoss: ${INITIAL_STOP_LOSS:1}
+    incrementPercent: ${INCREMENT_PERCENT:0.5}

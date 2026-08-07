@@ -125,7 +125,7 @@ public class RealTimeStrategyController {
                 return com.okx.trading.model.common.ApiResponse.error(500, "策略未加载完成，请稍后再试");
             }
 
-            if ("MEME-USDT".equals(symbol)) {
+            if ("CRV-USDT".equals(symbol)) {
                 symbol = String.format("%s-SWAP", symbol);
             }
 

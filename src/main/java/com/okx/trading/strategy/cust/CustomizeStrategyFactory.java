@@ -26,9 +26,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static com.okex.open.api.component.constant.OkxTradeType.*;
 
@@ -39,7 +37,7 @@ import static com.okex.open.api.component.constant.OkxTradeType.*;
 @Service
 public class CustomizeStrategyFactory {
 
-    private static final Logger log = LoggerFactory.getLogger(LoggerName.WSS_MSG);
+    private static final Logger log = LoggerFactory.getLogger(CustomizeStrategyFactory.class);
     private static final Logger strategyLogger = LoggerFactory.getLogger(LoggerName.WSS_STRATEGY_MSG);
 
     private final TradingService tradingService;
@@ -47,10 +45,10 @@ public class CustomizeStrategyFactory {
     PositionDetail positionDetail;
 
     @Value("${strategy.yjw.initialStopLoss:}")
-    private double triggerPoints = 2.0;
+    private double triggerPoints;
 
     @Value("${strategy.yjw.incrementPercent:}")
-    private double incrementPercent = 1;
+    private double incrementPercent;
 
     @Resource
     private RedisCacheService redisCacheService;
@@ -61,7 +59,7 @@ public class CustomizeStrategyFactory {
         this.tradingService = tradingService;
     }
 
-    public Strategy yjwStrategy(BarSeries barSeries, RealTimeStrategyEntity state, Candlestick candlestick) {
+    public Strategy yjwStrategy(long time, BarSeries barSeries, RealTimeStrategyEntity state, Candlestick candlestick) {
         try {
             // 获取最新的Bar
             int endIndex = barSeries.getEndIndex();
@@ -77,13 +75,18 @@ public class CustomizeStrategyFactory {
                 Signal signal = calculateSignal(currentBar, previousBar);
 
                 init(state.getSymbolSwap());
+                positionDetail = mockhandlerPositionDetail("yjwStrategy.positionDetail", time, positionDetail);
+
                 // 无持仓时开仓
                 if (positionDetail == null) {
                     if (signal.isLongSignal()) {
                         openLongPosition(currentBar, previousBar, state, candlestick);
+                        mockhandler("openLongPosition", time);
                     } else if (signal.isShortSignal()) {
                         openShortPosition(currentBar, previousBar, state, candlestick);
+                        mockhandler("openShortPosition", time);
                     } else {
+                        mockhandler("shortPosition", time);
                         strategyLogger.info("[数据][计算不出信号] 品种: {}, 时间: {}", state.getSymbolSwap(), currentBar.getEndTime());
                     }
                 }
@@ -97,6 +100,7 @@ public class CustomizeStrategyFactory {
         return null;
     }
 
+
     DynamicStopLossTracker tracker;
     String isTrackerClose = "isTrackerClose";
 
@@ -107,12 +111,13 @@ public class CustomizeStrategyFactory {
         }
     }
 
-    public void stopLoss(BarSeries barSeries, RealTimeStrategyEntity state, Candlestick candlestick) {
-        //strategyLogger.info("\t[检测] barSeries:{} state:{} candlestick:{}", barSeries, state, candlestick);
+    public void stopLoss(long time, BarSeries barSeries, RealTimeStrategyEntity state, Candlestick candlestick) {
         // 获取最新的Bar
         Bar currentBar = barSeries.getBar(barSeries.getEndIndex());
 
         init(state.getSymbolSwap());
+        positionDetail = mockhandlerPositionDetail("stopLoss.positionDetail", time, positionDetail);
+
         if (positionDetail == null || redisCacheService.hasKey(isTrackerClose)) {
             return;
         }
@@ -133,17 +138,20 @@ public class CustomizeStrategyFactory {
 
         PositionCalculationResult positionCalculationResult = positionDetail.calculateAll();
 
+        //TODO 记录
         BigDecimal bigDecimal = positionCalculationResult.getPriceChangePercent().divide(new BigDecimal("100"), 8, RoundingMode.HALF_UP)
                 .multiply(positionCalculationResult.getLeverage()).multiply(new BigDecimal("100")).setScale(4, RoundingMode.HALF_UP);
-        savePercentage("percentages1", bigDecimal);
+        mockhandlerBigDecimal("percentages1", time, bigDecimal);
 
+        //TODO 记录
         BigDecimal newData = positionCalculationResult.getProfitPercentage().add(BigDecimal.valueOf(100));
-        savePercentage("percentages", newData);
-
+        mockhandlerBigDecimal("percentages", time, newData);
         tracker.updateData(newData);
         tracker.logStatus();
 
         if (tracker.isStopLossTriggered()) {
+            mockhandlerBigDecimal("stop", time, bigDecimal);
+
             strategyLogger.info(positionCalculationResult.printSummary("\t"));
 
             strategyLogger.info("\n⚠️ 止损已被触发！交易结束。");
@@ -185,8 +193,11 @@ public class CustomizeStrategyFactory {
 
     }
 
-    public static void savePercentage(String fileName, BigDecimal percentage) {
-        String formatted = NumberUtil.decimalFormat("#.######", percentage.doubleValue());
+
+    /**
+     * 记录
+     */
+    public void savePercentage(String fileName, String formatted) {
         String filePath = System.getProperty("user.dir") + "/" + fileName + ".txt";
 
         // 追加一行（Hutool 自动处理换行和文件创建）
@@ -294,19 +305,72 @@ public class CustomizeStrategyFactory {
         tradingService.closePosition(state.getSymbolSwap(), PositionSide.SHORT == positionDetail.getPosSide() ? BUY_CLOSE_SHORT_ISOLATED : SELL_CLOSE_LONG_ISOLATED);
     }
 
+    boolean isMock = false;
+    long timeoutMinutes = 60 * 24 * 3;
+
+
+    private BigDecimal mockhandlerBigDecimal(String key, long time, BigDecimal bigDecimal) {
+        String format = String.format(key + "_%d", time);
+
+        if (isMock) {
+            bigDecimal = redisCacheService.getCache(format, BigDecimal.class);
+            switch (key) {
+                case "stop":
+                    log.info("[历史]止损已被触发{}", bigDecimal);
+                    break;
+                case "percentages":
+                    log.info("[历史]percentages{}", NumberUtil.decimalFormat("#.######", bigDecimal.doubleValue()));
+                    break;
+                case "percentages1":
+                    log.info("[历史]percentages1{}", NumberUtil.decimalFormat("#.######", bigDecimal.doubleValue()));
+                    break;
+            }
+            return bigDecimal;
+        } else {
+            redisCacheService.setCache(format, bigDecimal, timeoutMinutes);
+        }
+        return bigDecimal;
+    }
+
+    private PositionDetail mockhandlerPositionDetail(String key, long time, PositionDetail positionDetail) {
+        if (null == positionDetail) {
+            return null;
+        }
+
+        String format = String.format(key + "_%d", time);
+        if (isMock) {
+            if (redisCacheService.hasKey(format)) {
+                return redisCacheService.getCache(format, PositionDetail.class);
+            }
+            return null;
+        } else {
+            redisCacheService.setCache(format, positionDetail, timeoutMinutes);
+        }
+        return positionDetail;
+    }
+
+    void mockhandler(String key, long time) {
+        String format = String.format(key + "_%d", time);
+
+        if (isMock) {
+            Boolean b = redisCacheService.hasKey(format);
+            if (b) {
+                switch (key) {
+                    case "openLongPosition":
+                        log.info("开多仓");
+                        break;
+                    case "openShortPosition":
+                        log.info("开空仓");
+                        break;
+                    case "shortPosition":
+                        log.info("无持仓");
+                        break;
+                }
+            }
+
+        } else {
+            redisCacheService.setCache(format, true, timeoutMinutes);
+        }
+    }
+
 }
-
-
-//BigDecimal entryPrice = positionDetail.getAvgPx();
-//        BigDecimal currentPrice = positionDetail.getMarkPx();
-//        BigDecimal positionSize = positionDetail.getPos();
-//        BigDecimal leverage = positionDetail.getPos();
-//        PositionSide positionSide = positionDetail.getPosSide();
-//
-//        BigDecimal profitPercentage = OKXProfitCalculator.calculateProfitPercentage(entryPrice, currentPrice, leverage, positionSide);
-//
-//        BigDecimal add = positionCalculationResult.getProfitPercentage().add(BigDecimal.valueOf(100));
-//
-//        strategyLogger.info("[数据]calculateProfitPercentage:{} 杠杆收益率:{} add:{}", profitPercentage, positionCalculationResult.leverageYield(), add);
-
-

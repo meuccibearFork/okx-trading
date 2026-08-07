@@ -1,5 +1,6 @@
 package com.okx.trading.service.impl;
 
+import com.alibaba.fastjson.JSONObject;
 import com.okx.trading.event.CoinSubscriptionEvent;
 import com.okx.trading.model.entity.CandlestickEntity;
 import com.okx.trading.model.market.Candlestick;
@@ -329,15 +330,19 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
             return success;
         } catch (Exception e) {
-            log.error("❌ 清除K线Sorted Set失败，key: {}{}, error: {}",
-                    COIN_NRT_KLINE_PREFIX_KEY + symbol + interval, e.getMessage(), e);
+            log.error("❌ 清除K线Sorted Set失败，key: {}{}", COIN_NRT_KLINE_PREFIX_KEY + symbol + interval, e.getMessage(), e);
             return false;
         }
     }
 
     @Override
-    public void set(String key, String value, long timeout, TimeUnit unit){
-        redisTemplate.opsForValue().set(key, value, timeout, unit);
+    public void set(String key, JSONObject value, long timeout, TimeUnit unit){
+        redisTemplate.opsForValue().set(key, value.toJSONString(), timeout, unit);
+    }
+
+    @Override
+    public void set(String key, String value){
+        redisTemplate.opsForValue().set(key, value);
     }
 
     @Override

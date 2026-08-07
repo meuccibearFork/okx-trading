@@ -69,7 +69,7 @@ public class EmailNotificationServiceImpl implements NotificationService {
     @Resource
     private ApplicationEventPublisher applicationEventPublisher;
 
-    private static final String SYMBOL = "MEME-USDT-SWAP";
+    private static final String SYMBOL = "CRV-USDT-SWAP";
 //    private static final String SYMBOL = "XRP-USDT";
     private static final int MAX_UNCHANGED_COUNT = 3;
     private final Queue<String> priceQueue = new LinkedList<>();

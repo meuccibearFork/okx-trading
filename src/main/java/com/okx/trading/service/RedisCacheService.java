@@ -1,5 +1,6 @@
 package com.okx.trading.service;
 
+import com.alibaba.fastjson.JSONObject;
 import com.okx.trading.model.market.Candlestick;
 import com.okx.trading.model.market.Ticker;
 
@@ -124,8 +125,9 @@ public interface RedisCacheService {
      */
     boolean clearKlineSortedSet(String symbol, String interval);
 
-    void set(String key, String value, long timeout, TimeUnit unit);
+    void set(String key, JSONObject value, long timeout, TimeUnit unit);
 
+    void set(String key, String value);
 
     Boolean hasKey(String key);
 }

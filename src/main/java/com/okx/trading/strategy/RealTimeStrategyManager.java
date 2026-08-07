@@ -1,8 +1,7 @@
 package com.okx.trading.strategy;
 
-import cn.hutool.core.date.BetweenFormatter;
-import cn.hutool.core.date.DateUtil;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.okx.trading.constant.CommonConfig;
 import com.okx.trading.constant.log.LoggerName;
 import com.okx.trading.model.entity.RealTimeOrderEntity;
@@ -15,6 +14,8 @@ import com.okx.trading.service.*;
 import com.okx.trading.controller.TradeController;
 import com.okx.trading.service.impl.OkxApiWebSocketServiceImpl;
 import com.okx.trading.strategy.cust.CustomizeStrategyFactory;
+import jakarta.annotation.Resource;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -41,7 +42,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
 import static com.okx.trading.constant.IndicatorInfo.*;
-import static com.okx.trading.util.DateTimeUtil.isGreaterThanMinutes;
 
 
 /**
@@ -78,6 +78,9 @@ public class RealTimeStrategyManager implements ApplicationRunner {
     private final NotificationService notificationService;
     private ExecutorService executorService;
     private RedisTemplate redisTemplate;
+
+    @Resource
+    CustomizeStrategyFactoryV2 customizeStrategyFactoryV2;
 
     public RealTimeStrategyManager(@Lazy OkxApiWebSocketServiceImpl webSocketService,
                                    RealTimeOrderService realTimeOrderService,
@@ -130,8 +133,28 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                 .forEach(entry -> {
                     RealTimeStrategyEntity state = entry.getValue();
                     try {
-                        if (state.getStrategy() != null || CommonConfig.isNotBuild(state.getStrategyCode())) {
+                        if (state.getStrategy() != null) {
                             processStrategySignal(state, candlestick);
+                        } else {
+                            // 更新BarSeries - 智能判断是更新还是添加新bar
+                            Bar newBar = createBarFromCandlestick(candlestick);
+                            BarSeries series = runningBarSeries.get(state.getSymbol() + "_" + state.getInterval());
+                            boolean shouldReplace = shouldReplaceLastBar(series, newBar, state.getInterval());
+                            series.addBar(newBar, shouldReplace);
+                            if (!shouldReplace) {
+                                series = series.getSubSeries(series.getBeginIndex() + 1, series.getEndIndex() + 1);
+                            }
+                            long time = System.currentTimeMillis();
+                            BarSeries finalSeries = series;
+                            JSONObject jsonObject = new JSONObject() {{
+                                put("time", time);
+                                put("state", state);
+                                put("candlestick", candlestick);
+                                put("series", finalSeries);
+                            }};
+                            customizeStrategyFactory.savePercentage("processStrategySignal", jsonObject.toJSONString());
+
+                            customizeStrategyFactoryV2.processStrategySignal(time, state, candlestick, series);
                         }
                     } catch (Exception e) {
                         log.error("处理策略信号失败: key={}, error={}", buildStrategyKey(state.getStrategyCode(), state.getSymbol(), state.getInterval()), e.getMessage(), e);
@@ -148,7 +171,7 @@ public class RealTimeStrategyManager implements ApplicationRunner {
      * 真正执行实时策略逻辑，判断买卖信号的地方
      */
     private void processStrategySignal(RealTimeStrategyEntity state, Candlestick candlestick) {
-        strategyLogger.info("[数据]K线数据 {}", candlestick);
+
         // 更新BarSeries - 智能判断是更新还是添加新bar
         Bar newBar = createBarFromCandlestick(candlestick);
         BarSeries series = runningBarSeries.get(state.getSymbol() + "_" + state.getInterval());
@@ -163,10 +186,6 @@ public class RealTimeStrategyManager implements ApplicationRunner {
             // 控制同一个周期内只能交易一次
             boolean forbiddenTradeTime = false;
             boolean signalOfSamePeriod = false;
-
-            if (CommonConfig.isNotBuild(state.getStrategyCode())) {
-                customizeStrategyFactory.stopLoss(series, state, candlestick);
-            }
 
             long intervalSeconds = historicalDataService.getIntervalMinutes(candlestick.getIntervalVal()) * 60;
             // 在每个周期的最后15秒判断信号是否触发，而不是在周期刚开始就触发了就执行交易
@@ -185,25 +204,21 @@ public class RealTimeStrategyManager implements ApplicationRunner {
                     return;
                 }
             }
+
             // 检查交易信号
             int currentIndex = series.getEndIndex();
-            if (CommonConfig.isNotBuild(state.getStrategyCode())) {
-                if (1 == candlestick.getState()) {
-                    customizeStrategyFactory.yjwStrategy(series, state, candlestick);
-                }
-            } else {
-                boolean shouldBuy = state.getStrategy().shouldEnter(currentIndex);
-                boolean shouldSell = state.getStrategy().shouldExit(currentIndex);
+            boolean shouldBuy = state.getStrategy().shouldEnter(currentIndex);
+            boolean shouldSell = state.getStrategy().shouldExit(currentIndex);
 
-                // 处理买入信号 - 只有在上一次不是买入时才触发
-                if (shouldBuy && (StringUtils.isBlank(state.getLastTradeType()) || SELL.equals(state.getLastTradeType()))) {
-                    executeTradeSignal(state, candlestick, BUY);
-                }
 
-                // 处理卖出信号 - 只有在上一次是买入时才触发
-                if (shouldSell && BUY.equals(state.getLastTradeType())) {
-                    executeTradeSignal(state, candlestick, SELL);
-                }
+            // 处理买入信号 - 只有在上一次不是买入时才触发
+            if (shouldBuy && (StringUtils.isBlank(state.getLastTradeType()) || SELL.equals(state.getLastTradeType()))) {
+                executeTradeSignal(state, candlestick, BUY);
+            }
+
+            // 处理卖出信号 - 只有在上一次是买入时才触发
+            if (shouldSell && BUY.equals(state.getLastTradeType())) {
+                executeTradeSignal(state, candlestick, SELL);
             }
         }
     }
