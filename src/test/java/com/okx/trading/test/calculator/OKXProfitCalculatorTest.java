@@ -1,8 +1,9 @@
 package com.okx.trading.test.calculator;
 
 import com.alibaba.fastjson.JSONObject;
-import com.okex.open.api.component.calculator.dto.PositionDetail;
-import com.okex.open.api.component.calculatorTracker.dto.PositionCalculationResult;
+import com.okex.open.api.bean.PositionDetail;
+import com.okx.trading.component.calculator.OKXProfitCalculator;
+import com.okx.trading.component.calculator.dto.PositionCalculationResult;
 
 /**
  * OKX合约盈亏百分比计算器（基于开仓均价和当前价格）
@@ -25,7 +26,7 @@ public class OKXProfitCalculatorTest {
         System.out.println("杠杆倍数: " + positionDetail.getLever() + "倍");
         System.out.println("持仓方向: " + positionDetail.getPosSide());
 
-        PositionCalculationResult positionCalculationResult = positionDetail.calculateAll();
+        PositionCalculationResult positionCalculationResult = OKXProfitCalculator.calculateAll(positionDetail);
         positionCalculationResult.printSummary();
 
         System.out.println("计算盈亏: " + positionCalculationResult.getProfitAmount() + " USD");

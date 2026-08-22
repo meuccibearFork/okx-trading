@@ -1,0 +1,39 @@
+# 使用Java 8作为基础镜像
+FROM --platform=linux/amd64 eclipse-temurin:21-jre
+#FROM --platform=linux/amd64 openjdk:21-jdk-slim
+
+# 设置工作目录
+WORKDIR /app
+
+# 添加构建参数clear
+
+#ARG JAR_FILE=maven/*.jar
+ARG JAR_FILE=target/*.jar
+ARG PROXY_HOST=localhost
+ARG PROXY_PORT=10809
+
+# 添加构建参数
+
+# 安装必要的工具
+RUN #apk add --no-cache curl
+#RUN apt-get update && \
+#        apt-get install -y --no-install-recommends curl net-tools && \
+#        rm -rf /var/lib/apt/lists/*
+
+# 创建存放日志的目录
+RUN mkdir -p /var/log/okx-trading
+
+# 设置环境变量
+ENV TZ=Asia/Shanghai \
+    JAVA_OPTS="-Xms512m -Xmx1024m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=256m"
+#ENV HTTP_PROXY_HOST=${PROXY_HOST} \
+#    HTTP_PROXY_PORT=${PROXY_PORT}
+
+# 复制打包好的Jar文件到容器中
+COPY ${JAR_FILE} app.jar
+
+# 暴露应用程序端口
+EXPOSE 8088
+
+# 设置启动命令
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -Djava.security.egd=file:/dev/./urandom -jar /app/app.jar"]

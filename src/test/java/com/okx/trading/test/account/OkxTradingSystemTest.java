@@ -1,13 +1,14 @@
 package com.okx.trading.test.account;
 
+import com.okex.open.api.bean.PositionDetail;
 import com.okex.open.api.bean.account.result.AccountInfo;
 import com.okex.open.api.bean.trade.result.TradeResponse;
-import com.okex.open.api.component.calculator.dto.PositionDetail;
-import com.okex.open.api.component.calculatorTracker.dto.PositionCalculationResult;
-import com.okex.open.api.component.constant.MarginMode;
-import com.okex.open.api.component.constant.OkxTradeType;
-import com.okex.open.api.component.constant.PositionSide;
-import com.okex.open.api.component.tracker.DynamicStopLossTracker;
+import com.okex.open.api.constant.MarginMode;
+import com.okex.open.api.constant.OkxTradeType;
+import com.okex.open.api.constant.PositionSide;
+import com.okx.trading.component.calculator.OKXProfitCalculator;
+import com.okx.trading.component.calculator.dto.PositionCalculationResult;
+import com.okx.trading.component.tracker.DynamicStopLossTracker;
 import com.okex.open.api.service.trading.TradingService;
 import com.okex.open.api.service.trading.impl.TradingServiceImpl;
 import com.okx.trading.BaseTests;
@@ -129,7 +130,7 @@ public class OkxTradingSystemTest extends BaseTests {
         positions.printEnhancedPositions();
         System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
         PositionDetail positionDetail = positions.getPositionDetailOne(instrumentId);
-        PositionCalculationResult positionCalculationResult = positionDetail.calculateAll();
+        PositionCalculationResult positionCalculationResult = OKXProfitCalculator.calculateAll(positionDetail);
         log.info(positionCalculationResult.printSummary());
 
         // 每次更新后显示状态

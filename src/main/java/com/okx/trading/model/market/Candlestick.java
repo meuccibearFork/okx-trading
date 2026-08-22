@@ -1,6 +1,5 @@
 package com.okx.trading.model.market;
 
-import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.okx.trading.event.WebSocketReconnectEvent;
 import lombok.AllArgsConstructor;

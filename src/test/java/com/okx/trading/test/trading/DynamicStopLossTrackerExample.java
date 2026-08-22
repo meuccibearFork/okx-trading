@@ -2,8 +2,8 @@ package com.okx.trading.test.trading;
 
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.io.FileUtil;
-import com.okex.open.api.component.tracker.DynamicStopLossTracker;
-import com.okex.open.api.component.tracker.TradeStatistics;
+import com.okx.trading.component.tracker.DynamicStopLossTracker;
+import com.okx.trading.component.tracker.TradeStatistics;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;

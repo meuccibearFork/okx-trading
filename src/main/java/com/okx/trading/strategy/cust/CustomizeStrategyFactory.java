@@ -4,11 +4,12 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.json.JSONUtil;
-import com.okex.open.api.component.calculator.dto.PositionCalculationResult;
-import com.okex.open.api.component.calculator.dto.PositionDetail;
-import com.okex.open.api.component.constant.PositionSide;
-import com.okex.open.api.component.tracker.DynamicStopLossTracker;
-import com.okex.open.api.component.tracker.TradeStatistics;
+import com.okex.open.api.bean.PositionDetail;
+import com.okx.trading.component.calculator.OKXProfitCalculator;
+import com.okx.trading.component.calculator.dto.PositionCalculationResult;
+import com.okex.open.api.constant.PositionSide;
+import com.okx.trading.component.tracker.DynamicStopLossTracker;
+import com.okx.trading.component.tracker.TradeStatistics;
 import com.okex.open.api.service.trading.TradingService;
 import com.okx.trading.constant.log.LoggerName;
 import com.okx.trading.model.entity.RealTimeStrategyEntity;
@@ -29,7 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
-import static com.okex.open.api.component.constant.OkxTradeType.*;
+import static com.okex.open.api.constant.OkxTradeType.*;
 
 
 /**
@@ -133,11 +134,11 @@ public class CustomizeStrategyFactory {
                     .incrementPercent(BigDecimal.valueOf(incrementPercent))
                     .build();
 
-            PositionCalculationResult positionCalculationResult = positionDetail.calculateAll();
+            PositionCalculationResult positionCalculationResult = OKXProfitCalculator.calculateAll(positionDetail);
             strategyLogger.info(positionCalculationResult.printSummary("\t"));
         }
 
-        PositionCalculationResult positionCalculationResult = positionDetail.calculateAll();
+        PositionCalculationResult positionCalculationResult = OKXProfitCalculator.calculateAll(positionDetail);
 
         //TODO 记录
         BigDecimal bigDecimal = positionCalculationResult.getPriceChangePercent().divide(new BigDecimal("100"), 8, RoundingMode.HALF_UP)
